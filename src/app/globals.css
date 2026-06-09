@@ -1,26 +1,265 @@
 @import "tailwindcss";
 
+/* ──────────────────────────────────────────────
+   Dark mode: class-based via .dark on <html>
+   ────────────────────────────────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ──────────────────────────────────────────────
+   CSS Custom Properties — Light Theme (default)
+   ────────────────────────────────────────────── */
 :root {
+  /* Background & Surface */
   --background: #ffffff;
   --foreground: #171717;
+  --card: #f9fafb;
+  --card-foreground: #171717;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+
+  /* Borders */
+  --border: #e5e7eb;
+  --ring: #d1d5db;
+
+  /* Primary — Emerald / Health & Fitness */
+  --primary: #10b981;
+  --primary-foreground: #ffffff;
+
+  /* Secondary */
+  --secondary: #f3f4f6;
+  --secondary-foreground: #1f2937;
+
+  /* Accent */
+  --accent: #ecfdf5;
+  --accent-foreground: #065f46;
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* Success, Warning, Info */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+
+  /* Sidebar / Input */
+  --input: #e5e7eb;
+  --sidebar: #f8fafc;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
+/* ──────────────────────────────────────────────
+   CSS Custom Properties — Dark Theme
+   ────────────────────────────────────────────── */
+.dark {
+  /* Background & Surface */
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --card: #1a1a1a;
+  --card-foreground: #ededed;
+  --muted: #1a1a1a;
+  --muted-foreground: #a1a1aa;
+
+  /* Borders */
+  --border: #2a2a2a;
+  --ring: #3f3f46;
+
+  /* Primary — Emerald (slightly brighter in dark for contrast) */
+  --primary: #34d399;
+  --primary-foreground: #022c22;
+
+  /* Secondary */
+  --secondary: #1a1a1a;
+  --secondary-foreground: #d4d4d8;
+
+  /* Accent */
+  --accent: #052e16;
+  --accent-foreground: #6ee7b7;
+
+  /* Destructive */
+  --destructive: #f87171;
+  --destructive-foreground: #1a1a1a;
+
+  /* Success, Warning, Info */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+
+  /* Sidebar / Input */
+  --input: #2a2a2a;
+  --sidebar: #111111;
+
+  /* Shadows — deeper for dark theme */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+}
+
+/* ──────────────────────────────────────────────
+   Tailwind v4 Theme Registration
+   Maps CSS vars → Tailwind utility classes
+   ────────────────────────────────────────────── */
 @theme inline {
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-input: var(--input);
+  --color-sidebar: var(--sidebar);
+
+  /* Shadows */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  /* Font families */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ──────────────────────────────────────────────
+   Base Styles
+   ────────────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  /* Smooth transition when toggling dark mode */
+  transition: color-scheme 0.3s ease;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Theme transition: smoothly animate background & color changes */
+html,
+body,
+*,
+*::before,
+*::after {
+  transition-property: background-color, color, border-color, box-shadow, fill, stroke;
+  transition-timing-function: ease;
+  transition-duration: 0.15s;
+}
+
+/* Exclude focus outlines and transforms from transition to avoid lag */
+*:focus,
+*:active,
+*:focus-visible {
+  transition-property: none;
+}
+
+/* ──────────────────────────────────────────────
+   Scrollbar Styling (dark mode)
+   ────────────────────────────────────────────── */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* Firefox scrollbar for dark mode */
+.dark * {
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 #1a1a1a;
+}
+
+/* Light mode scrollbar — clean and minimal */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ──────────────────────────────────────────────
+   Utility Classes
+   ────────────────────────────────────────────── */
+
+/* Card surface — use bg-card class or this */
+.card-surface {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+}
+
+/* Subtle hover for interactive elements */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Primary button base */
+.btn-primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 500;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+/* Focus ring utility */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

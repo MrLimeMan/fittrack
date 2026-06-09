@@ -190,12 +190,12 @@ export default function DashboardPage() {
       // 4. Fetch profiles for all members
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', memberUserIds);
+        .select('id, display_name, avatar_url')
+        .in('id', memberUserIds);
 
       const profileMap = new Map<string, { display_name: string; avatar_url: string | null }>();
       profiles?.forEach((p) => {
-        profileMap.set(p.user_id, { display_name: p.display_name, avatar_url: p.avatar_url });
+        profileMap.set(p.id, { display_name: p.display_name, avatar_url: p.avatar_url });
       });
 
       // 5. Fetch this week's workouts for ALL group members

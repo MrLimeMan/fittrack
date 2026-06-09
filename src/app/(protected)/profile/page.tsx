@@ -134,8 +134,8 @@ export default function ProfilePage() {
     try {
       await supabase
         .from('profiles')
-        .update({ display_name: displayName.trim(), updated_at: new Date().toISOString() })
-        .eq('user_id', user.id);
+        .update({ display_name: displayName.trim() })
+        .eq('id', user.id);
 
       setEditingName(false);
     } catch (err) {

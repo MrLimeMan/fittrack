@@ -43,10 +43,8 @@ export default function SignupPage() {
 
     // Insert profile for the new user
     if (data.user) {
-      const username = displayName.toLowerCase().replace(/\s+/g, '_');
       const { error: profileError } = await supabase.from('profiles').insert({
-        user_id: data.user.id,
-        username,
+        id: data.user.id,
         display_name: displayName,
       });
 

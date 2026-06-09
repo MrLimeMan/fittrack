@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { data } = await supabase
             .from('profiles')
             .select('*')
-            .eq('user_id', currentUser.id)
+            .eq('id', currentUser.id)
             .single();
           setProfile(data);
         } else {
@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data } = await supabase
           .from('profiles')
           .select('*')
-          .eq('user_id', currentUser.id)
+          .eq('id', currentUser.id)
           .single();
         setProfile(data);
       }

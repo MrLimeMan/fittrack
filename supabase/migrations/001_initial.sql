@@ -47,7 +47,7 @@ CREATE TABLE exercises (
 -- Workout Plans
 CREATE TABLE workout_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,  -- nullable for starter templates
   group_id UUID REFERENCES groups(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   description TEXT,
@@ -225,24 +225,24 @@ CREATE POLICY "workout_plans_select"
     OR is_group_member(group_id, auth.uid())
   );
 
--- Users can insert their own plans
+-- Users can insert their own plans (or templates with no user)
 CREATE POLICY "workout_plans_insert"
   ON workout_plans FOR INSERT
   TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK (user_id IS NULL OR auth.uid() = user_id);
 
--- Users can update their own plans
+-- Users can update their own plans (or templates)
 CREATE POLICY "workout_plans_update_own"
   ON workout_plans FOR UPDATE
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING (user_id IS NULL OR auth.uid() = user_id)
+  WITH CHECK (user_id IS NULL OR auth.uid() = user_id);
 
--- Users can delete their own plans
+-- Users can delete their own plans (or templates)
 CREATE POLICY "workout_plans_delete_own"
   ON workout_plans FOR DELETE
   TO authenticated
-  USING (auth.uid() = user_id);
+  USING (user_id IS NULL OR auth.uid() = user_id);
 
 -- -------------------------------------------------------
 -- WORKOUT PLAN EXERCISES policies
@@ -264,14 +264,14 @@ CREATE POLICY "workout_plan_exercises_select"
     )
   );
 
--- If you own the plan, you can add exercises to it
+-- If you own the plan, you can add exercises to it (or if it's a template)
 CREATE POLICY "workout_plan_exercises_insert"
   ON workout_plan_exercises FOR INSERT
   TO authenticated
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM workout_plans wp
-      WHERE wp.id = plan_id AND wp.user_id = auth.uid()
+      WHERE wp.id = plan_id AND (wp.user_id IS NULL OR wp.user_id = auth.uid())
     )
   );
 
@@ -282,13 +282,13 @@ CREATE POLICY "workout_plan_exercises_update"
   USING (
     EXISTS (
       SELECT 1 FROM workout_plans wp
-      WHERE wp.id = plan_id AND wp.user_id = auth.uid()
+      WHERE wp.id = plan_id AND (wp.user_id IS NULL OR wp.user_id = auth.uid())
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM workout_plans wp
-      WHERE wp.id = plan_id AND wp.user_id = auth.uid()
+      WHERE wp.id = plan_id AND (wp.user_id IS NULL OR wp.user_id = auth.uid())
     )
   );
 
@@ -299,7 +299,7 @@ CREATE POLICY "workout_plan_exercises_delete"
   USING (
     EXISTS (
       SELECT 1 FROM workout_plans wp
-      WHERE wp.id = plan_id AND wp.user_id = auth.uid()
+      WHERE wp.id = plan_id AND (wp.user_id IS NULL OR wp.user_id = auth.uid())
     )
   );
 

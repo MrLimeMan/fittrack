@@ -1,8 +1,15 @@
--- Weight tracking table
+-- Weight tracking table (idempotent - safe to re-run)
+
+-- Drop existing if partially created
+DROP POLICY IF EXISTS "Users can read weight entries in their group" ON weight_entries;
+DROP POLICY IF EXISTS "Users can insert own weight entries" ON weight_entries;
+DROP POLICY IF EXISTS "Users can update own weight entries" ON weight_entries;
+DROP POLICY IF EXISTS "Users can delete own weight entries" ON weight_entries;
+DROP TABLE IF EXISTS weight_entries;
 
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS weight_entries (
+CREATE TABLE weight_entries (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   weight NUMERIC(5,1) NOT NULL,  -- e.g. 185.5
@@ -15,8 +22,7 @@ CREATE TABLE IF NOT EXISTS weight_entries (
 
 ALTER TABLE weight_entries ENABLE ROW LEVEL SECURITY;
 
--- Users can read all weight entries in their group (accountability)
--- But only write their own
+-- Users can read weight entries in their group (accountability)
 CREATE POLICY "Users can read weight entries in their group"
   ON weight_entries FOR SELECT
   USING (

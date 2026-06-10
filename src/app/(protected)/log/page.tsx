@@ -14,6 +14,7 @@ import {
   Loader2,
   Trash2,
   ChevronRight,
+  ChevronDown,
   AlertCircle,
   ExternalLink,
 } from 'lucide-react';
@@ -359,6 +360,26 @@ function DetailedLogTab({
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedInstructions, setExpandedInstructions] = useState<Set<number>>(new Set());
+
+  const toggleInstructions = useCallback((index: number) => {
+    setExpandedInstructions((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  const parseInstructions = useCallback((instructions: string): string[] => {
+    return instructions
+      .split(/\n|\d+\.\s/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }, []);
 
   const selectedExerciseIds = useMemo(
     () => exerciseList.map((e) => e.exercise_id),
@@ -545,6 +566,38 @@ function DetailedLogTab({
                 </button>
               </div>
 
+              {/* Collapsible Instructions */}
+              {fullExercise?.instructions && (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleInstructions(index)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    <span>Form Cues</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${
+                        expandedInstructions.has(index) ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {expandedInstructions.has(index) && (
+                    <div className="px-3 pb-3 space-y-1.5">
+                      {parseInstructions(fullExercise.instructions).map(
+                        (step, stepIdx) => (
+                          <div key={stepIdx} className="flex gap-2 text-xs text-foreground/80">
+                            <span className="font-semibold text-primary shrink-0">
+                              {stepIdx + 1}.
+                            </span>
+                            <span>{step}</span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Muscle map + tutorial */}
               {fullExercise && (
                 <div className="space-y-2">
@@ -696,6 +749,26 @@ function FromPlanTab({
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedInstructions, setExpandedInstructions] = useState<Set<number>>(new Set());
+
+  const toggleInstructions = useCallback((index: number) => {
+    setExpandedInstructions((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  const parseInstructions = useCallback((instructions: string): string[] => {
+    return instructions
+      .split(/\n|\d+\.\s/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }, []);
 
   // Load plan exercises when a plan is selected
   useEffect(() => {
@@ -968,6 +1041,38 @@ function FromPlanTab({
                   {item.exercise_name}
                 </span>
               </div>
+
+              {/* Collapsible Instructions */}
+              {fullExercise?.instructions && (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleInstructions(index)}
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    <span>Form Cues</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 transition-transform ${
+                        expandedInstructions.has(index) ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {expandedInstructions.has(index) && (
+                    <div className="px-3 pb-3 space-y-1.5">
+                      {parseInstructions(fullExercise.instructions).map(
+                        (step, stepIdx) => (
+                          <div key={stepIdx} className="flex gap-2 text-xs text-foreground/80">
+                            <span className="font-semibold text-primary shrink-0">
+                              {stepIdx + 1}.
+                            </span>
+                            <span>{step}</span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Muscle map + tutorial */}
               {fullExercise && (

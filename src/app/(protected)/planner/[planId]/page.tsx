@@ -14,7 +14,7 @@ import {
   Loader2,
   X,
   AlertTriangle,
-  ExternalLink,
+  Video,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
@@ -475,7 +475,7 @@ export default function PlanEditorPage() {
                         className="text-muted-foreground hover:text-primary transition-colors shrink-0"
                         title="Watch Tutorial"
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <Video className="h-3.5 w-3.5" />
                       </a>
                     )}
                   </div>

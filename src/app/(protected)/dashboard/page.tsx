@@ -114,10 +114,16 @@ export default function DashboardPage() {
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('fittrack_active_group') || null;
+    }
+    return null;
+  });
 
   const handleGroupChange = useCallback((groupId: string | null) => {
     setActiveGroupId(groupId);
+    localStorage.setItem('fittrack_active_group', groupId || '');
   }, []);
 
   const fetchDashboardData = useCallback(async () => {

@@ -1523,10 +1523,14 @@ export default function LogWorkoutPage() {
       if (plansResult.data) setPlans(plansResult.data);
       if (groupResult.data) {
         const userGroups: UserGroup[] = groupResult.data.map(
-          (gm: { group_id: string; groups: { name: string }[] | null }) => ({
-            group_id: gm.group_id,
-            group_name: gm.groups?.[0]?.name ?? 'Unknown Group',
-          })
+          (gm: Record<string, unknown>) => {
+            const groups = gm.groups as { name: string } | { name: string }[] | null;
+            const name = Array.isArray(groups) ? groups[0]?.name : groups?.name;
+            return {
+              group_id: gm.group_id as string,
+              group_name: name ?? 'Unknown Group',
+            };
+          }
         );
         setGroups(userGroups);
       }

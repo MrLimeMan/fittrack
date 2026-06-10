@@ -58,10 +58,16 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasGroup, setHasGroup] = useState<boolean | null>(null);
-  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('fittrack_active_group') || null;
+    }
+    return null;
+  });
 
   const handleGroupChange = useCallback((groupId: string | null) => {
     setActiveGroupId(groupId);
+    localStorage.setItem('fittrack_active_group', groupId || '');
   }, []);
 
   const fetchFeed = useCallback(async (isRefresh = false) => {

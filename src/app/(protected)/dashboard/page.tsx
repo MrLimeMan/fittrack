@@ -419,7 +419,7 @@ export default function DashboardPage() {
 
       {/* Group Switcher */}
       <div>
-        <GroupSwitcher onSelect={handleGroupChange} />
+        <GroupSwitcher activeGroupId={activeGroupId} onSelect={handleGroupChange} />
       </div>
 
       {/* Loading skeleton */}

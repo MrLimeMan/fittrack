@@ -219,7 +219,7 @@ export default function FeedPage() {
 
         {/* Group Switcher */}
         <div className="mb-4">
-          <GroupSwitcher onSelect={handleGroupChange} />
+          <GroupSwitcher activeGroupId={activeGroupId} onSelect={handleGroupChange} />
         </div>
 
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -250,7 +250,7 @@ export default function FeedPage() {
 
       {/* Group Switcher */}
       <div className="mb-4">
-        <GroupSwitcher onSelect={handleGroupChange} />
+        <GroupSwitcher activeGroupId={activeGroupId} onSelect={handleGroupChange} />
       </div>
 
       {refreshing && (

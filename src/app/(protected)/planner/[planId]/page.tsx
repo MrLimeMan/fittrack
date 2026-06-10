@@ -14,6 +14,7 @@ import {
   Loader2,
   X,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
@@ -107,7 +108,7 @@ export default function PlanEditorPage() {
       // Try the join query first
       let { data: peRows, error: joinError } = await supabase
         .from('workout_plan_exercises')
-        .select('*, exercises(name, muscle_groups)')
+        .select('*, exercises(name, muscle_groups, demo_url)')
         .eq('plan_id', planId)
         .order('order_index');
 
@@ -466,6 +467,17 @@ export default function PlanEditorPage() {
                     <h3 className="font-semibold text-foreground truncate">
                       {pe.exercise?.name ?? 'Unknown Exercise'}
                     </h3>
+                    {pe.exercise?.demo_url && (
+                      <a
+                        href={pe.exercise.demo_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted-foreground hover:text-primary transition-colors shrink-0"
+                        title="Watch Tutorial"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
                   </div>
                   {pe.exercise && (
                     <div className="flex flex-wrap gap-1 mt-1">

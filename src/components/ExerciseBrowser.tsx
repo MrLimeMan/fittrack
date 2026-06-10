@@ -309,7 +309,7 @@ export default function ExerciseBrowser({
 
                   {/* Muscle map */}
                   <div className="flex justify-center">
-                    <MuscleMap muscleGroups={exercise.muscle_groups} size="sm" />
+                    <MuscleMap primaryMuscles={exercise.muscle_groups} size="sm" />
                   </div>
 
                   {/* Tutorial link */}

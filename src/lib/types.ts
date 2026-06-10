@@ -72,12 +72,13 @@ export interface Exercise {
   description: string | null;
   category: ExerciseCategory;
   muscle_groups: MuscleGroup[];
+  primary_muscles: MuscleGroup[];
+  secondary_muscles: MuscleGroup[];
   equipment: EquipmentType[];
   difficulty: Difficulty;
-  is_custom: boolean;
-  created_by: string | null;
-  created_at: string;
+  instructions: string | null;
   demo_url: string | null;
+  created_at: string;
 }
 
 export interface WorkoutPlan {

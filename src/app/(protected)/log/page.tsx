@@ -549,7 +549,7 @@ function DetailedLogTab({
               {fullExercise && (
                 <div className="space-y-2">
                   <div className="flex justify-center">
-                    <MuscleMap muscleGroups={fullExercise.muscle_groups} size="sm" />
+                    <MuscleMap primaryMuscles={fullExercise.primary_muscles || fullExercise.muscle_groups} secondaryMuscles={fullExercise.secondary_muscles || []} size="xs" />
                   </div>
                   {fullExercise.demo_url && (
                     <a
@@ -973,7 +973,7 @@ function FromPlanTab({
               {fullExercise && (
                 <div className="space-y-2">
                   <div className="flex justify-center">
-                    <MuscleMap muscleGroups={fullExercise.muscle_groups} size="sm" />
+                    <MuscleMap primaryMuscles={fullExercise.primary_muscles || fullExercise.muscle_groups} secondaryMuscles={fullExercise.secondary_muscles || []} size="xs" />
                   </div>
                   {fullExercise.demo_url && (
                     <a

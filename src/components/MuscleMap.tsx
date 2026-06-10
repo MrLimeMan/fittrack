@@ -11,7 +11,7 @@ interface MuscleMapProps {
   primaryMuscles?: string[];
   /** Secondary muscle groups (amber) */
   secondaryMuscles?: string[];
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 /* ─── region definitions ───────────────────────────────────────────── */
@@ -514,7 +514,8 @@ const BODY_OUTLINE_BACK = (
 /* ──────────────────────────────────────────────────────────────────── */
 
 const SIZE_MAP = {
-  sm: { scale: 0.6, fontSize: 7, labelFontSize: 6, gap: 8 },
+  xs: { scale: 0.35, fontSize: 0, labelFontSize: 0, gap: 4 },
+  sm: { scale: 0.5, fontSize: 7, labelFontSize: 6, gap: 6 },
   md: { scale: 1, fontSize: 9, labelFontSize: 7, gap: 12 },
   lg: { scale: 1.3, fontSize: 10, labelFontSize: 8, gap: 16 },
 } as const;
@@ -649,7 +650,7 @@ export default function MuscleMap({
   size = 'md',
 }: MuscleMapProps) {
   const config = SIZE_MAP[size];
-  const showLabels = size !== 'sm';
+  const showLabels = size === 'md' || size === 'lg';
 
   // If only muscleGroups is provided (legacy usage), treat all as primary
   const effectivePrimary = useMemo(() => {
@@ -696,7 +697,8 @@ export default function MuscleMap({
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Legend — hidden on xs/sm */}
+      {showLabels && (
       <div className="flex items-center justify-center gap-4 mt-2" style={{ fontSize: config.fontSize }}>
         <div className="flex items-center gap-1">
           <div
@@ -723,6 +725,7 @@ export default function MuscleMap({
           <span className="text-gray-600">Secondary</span>
         </div>
       </div>
+      )}
     </div>
   );
 }

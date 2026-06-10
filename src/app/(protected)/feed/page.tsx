@@ -33,11 +33,16 @@ interface WorkoutWithProfile {
   } | null;
 }
 
-interface ReactionData {
+interface ReactionWithProfile {
   id: string;
   user_id: string;
   workout_id: string;
   emoji: string;
+  profiles: {
+    id: string;
+    display_name: string | null;
+    avatar_url: string | null;
+  } | null;
 }
 
 interface GroupMembership {
@@ -47,7 +52,7 @@ interface GroupMembership {
 export default function FeedPage() {
   const { user } = useAuth();
   const [workouts, setWorkouts] = useState<WorkoutWithProfile[]>([]);
-  const [reactions, setReactions] = useState<ReactionData[]>([]);
+  const [reactions, setReactions] = useState<ReactionWithProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasGroup, setHasGroup] = useState<boolean | null>(null);
@@ -79,7 +84,6 @@ export default function FeedPage() {
       const groupIds = memberships.map((m: GroupMembership) => m.group_id);
 
       // Fetch workouts for user's groups, joined with profile info
-      // RLS also filters, but we add explicit group filter for clarity
       const { data: workoutData, error: workoutError } = await supabase
         .from('workouts')
         .select(
@@ -100,15 +104,18 @@ export default function FeedPage() {
       const workoutList = (workoutData || []) as unknown as WorkoutWithProfile[];
       setWorkouts(workoutList);
 
-      // Fetch reactions for these workouts
+      // Fetch reactions for these workouts, joined with user profiles
       if (workoutList.length > 0) {
         const workoutIds = workoutList.map((w) => w.id);
         const { data: reactionData } = await supabase
           .from('reactions')
-          .select('*')
+          .select(`
+            *,
+            profiles!user_id (id, display_name, avatar_url)
+          `)
           .in('workout_id', workoutIds);
 
-        setReactions((reactionData || []) as ReactionData[]);
+        setReactions((reactionData || []) as unknown as ReactionWithProfile[]);
       } else {
         setReactions([]);
       }

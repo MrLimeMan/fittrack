@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { User, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface WorkoutExercise {
   name: string;
@@ -10,6 +10,12 @@ interface WorkoutExercise {
   reps?: string | number;
   weight?: string;
   duration?: number;
+}
+
+interface ProfileBrief {
+  id: string;
+  display_name: string | null;
+  avatar_url: string | null;
 }
 
 interface WorkoutWithProfile {
@@ -23,24 +29,21 @@ interface WorkoutWithProfile {
   exercises: WorkoutExercise[];
   performed_at: string;
   created_at: string;
-  profiles: {
-    id: string;
-    display_name: string | null;
-    avatar_url: string | null;
-  } | null;
+  profiles: ProfileBrief | null;
 }
 
-interface ReactionData {
+interface ReactionWithProfile {
   id: string;
   user_id: string;
   workout_id: string;
   emoji: string;
+  profiles: ProfileBrief | null;
 }
 
 interface WorkoutCardProps {
   workout: WorkoutWithProfile;
   currentUser: { id: string };
-  reactions: ReactionData[];
+  reactions: ReactionWithProfile[];
   onReactionChange?: () => void;
 }
 
@@ -52,6 +55,23 @@ const WORKOUT_TYPE_STYLES: Record<string, { bg: string; text: string; label: str
 };
 
 const REACTION_EMOJIS = ['🔥', '💪', '👏'];
+
+const AVATAR_COLORS = [
+  'bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500',
+  'bg-rose-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-pink-500',
+];
+
+function getInitial(name: string | null): string {
+  return (name || '?').charAt(0).toUpperCase();
+}
+
+function getAvatarColor(id: string): string {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 function timeAgo(dateString: string): string {
   const now = new Date();
@@ -67,6 +87,30 @@ function timeAgo(dateString: string): string {
   if (days < 7) return `${days}d ago`;
   const weeks = Math.floor(days / 7);
   return `${weeks}w ago`;
+}
+
+/** Small avatar circle: shows photo or colored initial fallback */
+function MiniAvatar({ profile, size = 'w-5 h-5' }: { profile: ProfileBrief | null; size?: string }) {
+  const initial = getInitial(profile?.display_name ?? null);
+  const colorClass = profile?.id ? getAvatarColor(profile.id) : 'bg-gray-400';
+
+  if (profile?.avatar_url) {
+    return (
+      <img
+        src={profile.avatar_url}
+        alt={profile.display_name || 'User'}
+        className={`${size} rounded-full object-cover flex-shrink-0`}
+      />
+    );
+  }
+
+  return (
+    <div className={`${size} rounded-full ${colorClass} flex items-center justify-center flex-shrink-0`}>
+      <span className={`${size === 'w-5 h-5' ? 'text-[8px]' : 'text-xs'} font-bold text-white select-none`}>
+        {initial}
+      </span>
+    </div>
+  );
 }
 
 export default function WorkoutCard({ workout, currentUser, reactions, onReactionChange }: WorkoutCardProps) {
@@ -87,12 +131,17 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
     return acc;
   }, {} as Record<string, boolean>);
 
+  // Group reactions by emoji, with their profiles
+  const reactionsByEmoji = REACTION_EMOJIS.reduce((acc, emoji) => {
+    acc[emoji] = reactions.filter((r) => r.workout_id === workout.id && r.emoji === emoji);
+    return acc;
+  }, {} as Record<string, ReactionWithProfile[]>);
+
   async function toggleReaction(emoji: string) {
     if (toggling) return;
     setToggling(emoji);
 
     if (userReactions[emoji]) {
-      // Remove reaction
       await supabase
         .from('reactions')
         .delete()
@@ -100,7 +149,6 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
         .eq('user_id', currentUser.id)
         .eq('emoji', emoji);
     } else {
-      // Add reaction
       await supabase.from('reactions').insert({
         workout_id: workout.id,
         user_id: currentUser.id,
@@ -116,7 +164,8 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
     <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
       {/* Header: avatar, name, time, type badge */}
       <div className="flex items-start gap-3 mb-3">
-        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
+        {/* Author avatar: 40px rounded-full */}
+        <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden">
           {profile?.avatar_url ? (
             <img
               src={profile.avatar_url}
@@ -124,7 +173,11 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
               className="w-full h-full object-cover"
             />
           ) : (
-            <User className="w-5 h-5 text-primary" />
+            <div className={`w-full h-full ${profile?.id ? getAvatarColor(profile.id) : 'bg-gray-400'} flex items-center justify-center`}>
+              <span className="text-lg font-bold text-white select-none">
+                {getInitial(profile?.display_name ?? null)}
+              </span>
+            </div>
           )}
         </div>
 
@@ -180,32 +233,58 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
         </div>
       )}
 
-      {/* Reaction buttons */}
-      <div className="flex items-center gap-2 pt-2 border-t border-border">
+      {/* Reaction buttons with user avatars */}
+      <div className="flex flex-col gap-1 pt-2 border-t border-border">
+        <div className="flex items-center gap-2">
+          {REACTION_EMOJIS.map((emoji) => {
+            const count = reactionCounts[emoji];
+            const isActive = userReactions[emoji];
+            const isLoading = toggling === emoji;
+
+            return (
+              <button
+                key={emoji}
+                onClick={() => toggleReaction(emoji)}
+                disabled={isLoading}
+                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all
+                  ${
+                    isActive
+                      ? 'bg-primary/15 text-primary border border-primary/30'
+                      : 'bg-muted text-muted-foreground border border-transparent hover:bg-muted/80'
+                  }
+                  ${isLoading ? 'opacity-50' : ''}
+                `}
+              >
+                <span className="text-base leading-none">{emoji}</span>
+                {count > 0 && (
+                  <span className="text-xs font-medium">{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Show small avatar circles of users who reacted, grouped by emoji */}
         {REACTION_EMOJIS.map((emoji) => {
-          const count = reactionCounts[emoji];
-          const isActive = userReactions[emoji];
-          const isLoading = toggling === emoji;
+          const emojiReactions = reactionsByEmoji[emoji];
+          if (!emojiReactions || emojiReactions.length === 0) return null;
 
           return (
-            <button
-              key={emoji}
-              onClick={() => toggleReaction(emoji)}
-              disabled={isLoading}
-              className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all
-                ${
-                  isActive
-                    ? 'bg-primary/15 text-primary border border-primary/30'
-                    : 'bg-muted text-muted-foreground border border-transparent hover:bg-muted/80'
-                }
-                ${isLoading ? 'opacity-50' : ''}
-              `}
-            >
-              <span className="text-base leading-none">{emoji}</span>
-              {count > 0 && (
-                <span className="text-xs font-medium">{count}</span>
+            <div key={emoji} className="flex items-center gap-0.5 ml-1">
+              <span className="text-xs text-muted-foreground mr-1">{emoji}</span>
+              <div className="flex -space-x-1.5">
+                {emojiReactions.slice(0, 8).map((reaction) => (
+                  <div key={reaction.id} title={reaction.profiles?.display_name || 'User'}>
+                    <MiniAvatar profile={reaction.profiles} size="w-5 h-5" />
+                  </div>
+                ))}
+              </div>
+              {emojiReactions.length > 8 && (
+                <span className="text-[10px] text-muted-foreground ml-1">
+                  +{emojiReactions.length - 8}
+                </span>
               )}
-            </button>
+            </div>
           );
         })}
       </div>

@@ -14,6 +14,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import ThemeToggle from '@/components/ThemeToggle';
+import AvatarUpload from '@/components/AvatarUpload';
 import type { Group, GroupMember } from '@/lib/types';
 
 interface GroupWithInvite extends Group {
@@ -44,6 +45,17 @@ export default function ProfilePage() {
   >({});
   const [leavingGroup, setLeavingGroup] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      setAvatarUrl(profile.avatar_url);
+    }
+  }, [profile]);
+
+  const handleAvatarUpdate = (newUrl: string) => {
+    setAvatarUrl(newUrl);
+  };
 
   useEffect(() => {
     if (profile) {
@@ -189,9 +201,13 @@ export default function ProfilePage() {
         {/* Profile Info Card */}
         <div className="bg-card border border-border rounded-xl p-6">
           <div className="flex items-start gap-4 mb-4">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <User className="w-8 h-8 text-primary" />
-            </div>
+            {user && (
+              <AvatarUpload
+                user={user}
+                profile={avatarUrl ? { ...profile!, avatar_url: avatarUrl } : profile}
+                onAvatarUpdate={handleAvatarUpdate}
+              />
+            )}
             <div className="flex-1 min-w-0">
               {editingName ? (
                 <div className="flex items-center gap-2">

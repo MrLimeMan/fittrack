@@ -37,10 +37,10 @@ const MUSCLE_TO_EXERCISE: Record<string, string[]> = {
 /* ─── size config ──────────────────────────────────────────────────── */
 
 const SIZE_CONFIG = {
-  xs: { width: 130, height: 102 },
-  sm: { width: 190, height: 148 },
-  md: { width: 300, height: 234 },
-  lg: { width: 400, height: 312 },
+  xs: { width: '45%', height: 'auto' },
+  sm: { width: '65%', height: 'auto' },
+  md: { width: '85%', height: 'auto' },
+  lg: { width: '100%', height: 'auto' },
 } as const;
 
 /* ─── colors ───────────────────────────────────────────────────────── */
@@ -82,7 +82,7 @@ export default function MuscleMap({
 
   return (
     <div className="inline-flex flex-col items-center">
-      <div style={{ width: config.width, height: config.height }}>
+      <div style={{ width: config.width }} className="max-w-full">
         <svg
           viewBox="0 0 768.41 607.66"
           xmlns="http://www.w3.org/2000/svg"

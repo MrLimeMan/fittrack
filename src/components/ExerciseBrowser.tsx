@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, ChevronDown, ChevronUp, X, Check, ExternalLink } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, X, Check, Video } from 'lucide-react';
 import MuscleMap from '@/components/MuscleMap';
 import type {
   Exercise,
@@ -99,6 +99,18 @@ function formatMuscle(m: MuscleGroup): string {
 
 function formatEquipment(e: EquipmentType): string {
   return e.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatInstructions(raw: string): string[] {
+  // Split on newlines first, then fall back to splitting on periods
+  let steps = raw.split(/\n/).map((s) => s.trim()).filter(Boolean);
+  if (steps.length <= 1) {
+    steps = raw
+      .split(/\.\s+/)
+      .map((s) => s.trim().replace(/\.$/, ''))
+      .filter(Boolean);
+  }
+  return steps;
 }
 
 export default function ExerciseBrowser({
@@ -277,11 +289,11 @@ export default function ExerciseBrowser({
                       <p className="text-xs font-medium text-muted-foreground mb-1">
                         Equipment
                       </p>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {exercise.equipment.map((e) => (
                           <span
                             key={e}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] bg-muted text-muted-foreground"
+                            className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20"
                           >
                             {formatEquipment(e)}
                           </span>
@@ -312,16 +324,35 @@ export default function ExerciseBrowser({
                     <MuscleMap primaryMuscles={exercise.primary_muscles || exercise.muscle_groups} secondaryMuscles={exercise.secondary_muscles || []} size="xs" />
                   </div>
 
+                  {/* Instructions */}
+                  {exercise.instructions && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                        Instructions
+                      </p>
+                      <ol className="space-y-1.5">
+                        {formatInstructions(exercise.instructions).map((step, i) => (
+                          <li key={i} className="flex gap-2 text-sm text-muted-foreground">
+                            <span className="shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold flex items-center justify-center">
+                              {i + 1}
+                            </span>
+                            <span className="pt-0.5 leading-snug">{step}{!step.endsWith('.') ? '.' : ''}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
                   {/* Tutorial link */}
                   {exercise.demo_url && (
                     <a
                       href={exercise.demo_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors"
                     >
-                      <ExternalLink className="h-3 w-3" />
-                      Watch Tutorial
+                      <Video className="h-4 w-4" />
+                      Watch Video Tutorial
                     </a>
                   )}
 

@@ -105,6 +105,8 @@ export default function CommentSection({ workoutId, currentUser }: CommentSectio
     if (!error) {
       setNewComment('');
       await fetchComments();
+    } else {
+      console.error('Error adding comment:', error);
     }
     setSubmitting(false);
   }

@@ -13,6 +13,7 @@ import {
   GripVertical,
   Loader2,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
@@ -41,20 +42,38 @@ export default function PlanEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showBrowser, setShowBrowser] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [addedExerciseIds, setAddedExerciseIds] = useState<Set<string>>(new Set());
 
   // Fetch plan
   useEffect(() => {
     if (!planId) return;
     async function loadPlan() {
-      const { data } = await supabase
-        .from('workout_plans')
-        .select('*')
-        .eq('id', planId)
-        .single();
-      if (data) {
-        setPlan(data);
-        setName(data.name);
-        setDescription(data.description ?? '');
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('workout_plans')
+          .select('*')
+          .eq('id', planId)
+          .single();
+        if (fetchError) {
+          console.error('Error loading plan:', fetchError);
+          setError('Could not load this workout plan. It may have been deleted or you may not have access.');
+          setLoading(false);
+          return;
+        }
+        if (data) {
+          setPlan(data);
+          setName(data.name);
+          setDescription(data.description ?? '');
+        } else {
+          setError('Plan not found.');
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Unexpected error loading plan:', err);
+        setError('An unexpected error occurred while loading the plan.');
+        setLoading(false);
       }
     }
     loadPlan();
@@ -63,11 +82,19 @@ export default function PlanEditorPage() {
   // Fetch all exercises for the browser
   useEffect(() => {
     async function loadExercises() {
-      const { data } = await supabase
-        .from('exercises')
-        .select('*')
-        .order('name');
-      if (data) setAllExercises(data);
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('exercises')
+          .select('*')
+          .order('name');
+        if (fetchError) {
+          console.error('Error loading exercises:', fetchError);
+          return;
+        }
+        if (data) setAllExercises(data);
+      } catch (err) {
+        console.error('Unexpected error loading exercises:', err);
+      }
     }
     loadExercises();
   }, []);
@@ -76,19 +103,60 @@ export default function PlanEditorPage() {
   const loadPlanExercises = useCallback(async () => {
     if (!planId) return;
     setLoading(true);
-    const { data: peRows } = await supabase
-      .from('workout_plan_exercises')
-      .select('*, exercises(name)')
-      .eq('plan_id', planId)
-      .order('order_index');
+    try {
+      // Try the join query first
+      let { data: peRows, error: joinError } = await supabase
+        .from('workout_plan_exercises')
+        .select('*, exercises(name, muscle_groups)')
+        .eq('plan_id', planId)
+        .order('order_index');
 
-    if (peRows && peRows.length > 0) {
-      const items: PlanExerciseItem[] = peRows.map((row) => ({
-        ...row,
-        exercise: (row as any).exercises ?? undefined,
-      }));
-      setPlanExercises(items);
-    } else {
+      // If the join fails, fall back to a simple query and fetch exercises separately
+      if (joinError) {
+        console.warn('Join query failed, falling back to separate fetches:', joinError);
+        const { data: peSimple, error: simpleError } = await supabase
+          .from('workout_plan_exercises')
+          .select('*')
+          .eq('plan_id', planId)
+          .order('order_index');
+
+        if (simpleError) {
+          console.error('Error loading plan exercises:', simpleError);
+          setPlanExercises([]);
+          setLoading(false);
+          return;
+        }
+
+        if (peSimple && peSimple.length > 0) {
+          // Fetch exercise details for each
+          const exerciseIds = [...new Set(peSimple.map((pe) => pe.exercise_id))];
+          const { data: exData } = await supabase
+            .from('exercises')
+            .select('*')
+            .in('id', exerciseIds);
+
+          const exMap = new Map<string, Exercise>();
+          if (exData) exData.forEach((ex) => exMap.set(ex.id, ex));
+
+          const items: PlanExerciseItem[] = peSimple.map((row) => ({
+            ...row,
+            exercise: exMap.get(row.exercise_id) ?? undefined,
+          }));
+          setPlanExercises(items);
+        } else {
+          setPlanExercises([]);
+        }
+      } else if (peRows && peRows.length > 0) {
+        const items: PlanExerciseItem[] = peRows.map((row) => ({
+          ...row,
+          exercise: (row as any).exercises ?? undefined,
+        }));
+        setPlanExercises(items);
+      } else {
+        setPlanExercises([]);
+      }
+    } catch (err) {
+      console.error('Unexpected error loading plan exercises:', err);
       setPlanExercises([]);
     }
     setLoading(false);
@@ -187,7 +255,7 @@ export default function PlanEditorPage() {
       exercise,
     };
     setPlanExercises((prev) => [...prev, newItem]);
-    setShowBrowser(false);
+    setAddedExerciseIds((prev) => new Set(prev).add(exercise.id));
   }
 
   async function deleteExercise(index: number) {
@@ -234,15 +302,39 @@ export default function PlanEditorPage() {
     );
   }
 
-  if (!plan) {
+  if (error || !plan) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <p className="text-muted-foreground">Plan not found</p>
+        <AlertTriangle className="h-12 w-12 text-muted-foreground" />
+        <p className="text-muted-foreground text-center max-w-md">
+          {error || 'Plan not found'}
+        </p>
         <button onClick={() => router.push('/planner')} className="btn-primary">
           Back to Planner
         </button>
       </div>
     );
+  }
+
+  async function deletePlan() {
+    if (!plan) return;
+    setDeleting(true);
+    try {
+      // Delete plan exercises first
+      await supabase
+        .from('workout_plan_exercises')
+        .delete()
+        .eq('plan_id', plan.id);
+      // Delete the plan
+      await supabase
+        .from('workout_plans')
+        .delete()
+        .eq('id', plan.id);
+      router.push('/planner');
+    } catch (err) {
+      console.error('Error deleting plan:', err);
+      setDeleting(false);
+    }
   }
 
   return (
@@ -279,6 +371,19 @@ export default function PlanEditorPage() {
             >
               <Play className="h-4 w-4" />
               Use Plan
+            </button>
+            <button
+              type="button"
+              onClick={deletePlan}
+              disabled={deleting}
+              className="flex items-center gap-1.5 px-4 py-2 bg-destructive/15 text-destructive rounded-lg text-sm font-medium hover:bg-destructive/25 transition-colors"
+            >
+              {deleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Delete Plan
             </button>
           </div>
         </div>
@@ -491,19 +596,29 @@ export default function PlanEditorPage() {
           <div className="relative ml-auto w-full max-w-xl bg-background border-l border-border overflow-y-auto">
             <div className="sticky top-0 bg-background border-b border-border px-4 py-3 flex items-center justify-between z-10">
               <h2 className="font-semibold text-foreground">Add Exercise</h2>
-              <button
-                type="button"
-                onClick={() => setShowBrowser(false)}
-                className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBrowser(false)}
+                  className="px-4 py-1.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  Done
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBrowser(false)}
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             <div className="p-4">
               <ExerciseBrowser
                 exercises={allExercises}
                 onSelect={addExercise}
                 showSelectButton={true}
+                selectedExerciseIds={addedExerciseIds}
               />
             </div>
           </div>

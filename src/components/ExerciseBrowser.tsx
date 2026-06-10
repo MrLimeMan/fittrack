@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, X, Check } from 'lucide-react';
 import type {
   Exercise,
   ExerciseCategory,
@@ -22,6 +22,7 @@ interface ExerciseBrowserProps {
   filters?: Partial<FilterState>;
   onSelect?: (exercise: Exercise) => void;
   showSelectButton?: boolean;
+  selectedExerciseIds?: Set<string>;
 }
 
 const CATEGORY_OPTIONS: { value: ExerciseCategory; label: string }[] = [
@@ -104,6 +105,7 @@ export default function ExerciseBrowser({
   filters: initialFilters,
   onSelect,
   showSelectButton = true,
+  selectedExerciseIds,
 }: ExerciseBrowserProps) {
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<FilterState>({
@@ -210,9 +212,16 @@ export default function ExerciseBrowser({
                 className="w-full text-left p-4 space-y-2"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-foreground leading-tight">
-                    {exercise.name}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground leading-tight">
+                      {exercise.name}
+                    </h3>
+                    {selectedExerciseIds?.has(exercise.id) && (
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-success/20">
+                        <Check className="h-3 w-3 text-success" />
+                      </span>
+                    )}
+                  </div>
                   {isExpanded ? (
                     <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   ) : (
@@ -303,7 +312,7 @@ export default function ExerciseBrowser({
                       onClick={() => onSelect(exercise)}
                       className="w-full btn-primary text-sm mt-1"
                     >
-                      Add to Plan
+                      {selectedExerciseIds?.has(exercise.id) ? 'Add Another' : 'Add to Plan'}
                     </button>
                   )}
                 </div>

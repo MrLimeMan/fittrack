@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, Pencil, Check, Trash2 } from 'lucide-react';
+import { Clock, Pencil, Check, Trash2, MessageSquare } from 'lucide-react';
+import CommentSection from '@/components/CommentSection';
 
 interface WorkoutExercise {
   name: string;
@@ -128,6 +129,8 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
   const [locallyEdited, setLocallyEdited] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
 
   const profile = workout.profiles;
   const typeStyle = WORKOUT_TYPE_STYLES[workout.workout_type] || WORKOUT_TYPE_STYLES.other;
@@ -155,6 +158,18 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
     acc[emoji] = reactions.filter((r) => r.workout_id === workout.id && r.emoji === emoji);
     return acc;
   }, {} as Record<string, ReactionWithProfile[]>);
+
+  // Fetch comment count
+  useEffect(() => {
+    async function fetchCommentCount() {
+      const { count } = await supabase
+        .from('comments')
+        .select('id', { count: 'exact', head: true })
+        .eq('workout_id', workout.id);
+      setCommentCount(count ?? 0);
+    }
+    fetchCommentCount();
+  }, [workout.id]);
 
   async function toggleReaction(emoji: string) {
     if (toggling) return;
@@ -552,6 +567,34 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
             </div>
           );
         })}
+
+        {/* Comments toggle */}
+        <div className="pt-1">
+          <button
+            onClick={() => setShowComments(!showComments)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all border ${
+              showComments
+                ? 'bg-primary/15 text-primary border-primary/30'
+                : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Comments</span>
+            {commentCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-primary/20 text-primary text-[10px] font-bold">
+                {commentCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Comment section */}
+        {showComments && (
+          <CommentSection
+            workoutId={workout.id}
+            currentUser={currentUser}
+          />
+        )}
       </div>
     </div>
   );

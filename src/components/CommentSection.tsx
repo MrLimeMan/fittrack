@@ -72,8 +72,14 @@ export default function CommentSection({ workoutId, currentUser }: CommentSectio
 
     if (data) {
       const mapped = (data as Record<string, unknown>[]).map((row) => {
-        const profiles = row.profiles as { id: string; display_name: string | null; avatar_url: string | null }[] | null;
-        const profile: CommentProfile | null = profiles?.[0] ?? null;
+        const profilesData = row.profiles;
+        // Supabase returns single object for FK, not array
+        const profile: CommentProfile | null =
+          profilesData && typeof profilesData === 'object' && !Array.isArray(profilesData)
+            ? (profilesData as CommentProfile)
+            : Array.isArray(profilesData)
+            ? (profilesData[0] as CommentProfile) ?? null
+            : null;
         return {
           id: row.id as string,
           workout_id: row.workout_id as string,

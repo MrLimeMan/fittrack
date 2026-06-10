@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { RefreshCw, Users, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -70,6 +70,10 @@ export default function FeedPage() {
     localStorage.setItem('fittrack_active_group', groupId || '');
   }, []);
 
+  // Store activeGroupId in a ref so fetchFeed doesn't need it as a dep
+  const activeGroupIdRef = useRef(activeGroupId);
+  activeGroupIdRef.current = activeGroupId;
+
   const fetchFeed = useCallback(async (isRefresh = false) => {
     if (!user) return;
 
@@ -94,8 +98,8 @@ export default function FeedPage() {
       }
 
       setHasGroup(true);
-      const groupIds = activeGroupId
-        ? [activeGroupId]
+      const groupIds = activeGroupIdRef.current
+        ? [activeGroupIdRef.current]
         : memberships.map((m: GroupMembership) => m.group_id);
 
       // Fetch workouts for user's groups, joined with profile info
@@ -140,13 +144,13 @@ export default function FeedPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, activeGroupId]);
+  }, [user]);
 
   useEffect(() => {
     if (user) {
-      fetchFeed();
+      fetchFeed(true);
     }
-  }, [user, fetchFeed]);
+  }, [user, activeGroupId]);
 
   function handleRefresh() {
     fetchFeed(true);

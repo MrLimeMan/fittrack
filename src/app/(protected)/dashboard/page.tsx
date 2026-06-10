@@ -126,7 +126,7 @@ export default function DashboardPage() {
     localStorage.setItem('fittrack_active_group', groupId || '');
   }, []);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (groupId?: string | null) => {
     if (!user || !profile) return;
 
     setLoading(true);
@@ -134,7 +134,7 @@ export default function DashboardPage() {
 
     try {
       // 1. Find user's group membership
-      let targetGroupId = activeGroupId;
+      let targetGroupId = groupId !== undefined ? groupId : activeGroupId;
 
       if (!targetGroupId) {
         const { data: membership, error: memberError } = await supabase
@@ -303,9 +303,9 @@ export default function DashboardPage() {
   // Refetch when active group changes
   useEffect(() => {
     if (!authLoading && user && profile && activeGroupId !== undefined) {
-      fetchDashboardData();
+      fetchDashboardData(activeGroupId);
     }
-  }, [authLoading, user, profile, activeGroupId, fetchDashboardData]);
+  }, [authLoading, user, profile, activeGroupId]);
 
   // Auth loading state
   if (authLoading) {
@@ -387,7 +387,7 @@ export default function DashboardPage() {
           <div className="text-3xl mb-3">⚠️</div>
           <p className="text-foreground mb-3">{error}</p>
           <button
-            onClick={fetchDashboardData}
+            onClick={() => fetchDashboardData(activeGroupId)}
             className="btn-primary"
           >
             Try Again

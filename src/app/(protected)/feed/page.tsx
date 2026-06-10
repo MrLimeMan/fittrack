@@ -74,7 +74,7 @@ export default function FeedPage() {
   const activeGroupIdRef = useRef(activeGroupId);
   activeGroupIdRef.current = activeGroupId;
 
-  const fetchFeed = useCallback(async (isRefresh = false) => {
+  const fetchFeed = useCallback(async (isRefresh = false, groupId?: string | null) => {
     if (!user) return;
 
     if (isRefresh) {
@@ -82,6 +82,9 @@ export default function FeedPage() {
     } else {
       setLoading(true);
     }
+
+    // Use the passed groupId, or fall back to ref
+    const targetGroupId = groupId !== undefined ? groupId : activeGroupIdRef.current;
 
     try {
       // First check if user belongs to any group
@@ -98,8 +101,8 @@ export default function FeedPage() {
       }
 
       setHasGroup(true);
-      const groupIds = activeGroupIdRef.current
-        ? [activeGroupIdRef.current]
+      const groupIds = targetGroupId
+        ? [targetGroupId]
         : memberships.map((m: GroupMembership) => m.group_id);
 
       // Fetch workouts for user's groups, joined with profile info
@@ -148,7 +151,7 @@ export default function FeedPage() {
 
   useEffect(() => {
     if (user) {
-      fetchFeed(true);
+      fetchFeed(true, activeGroupId);
     }
   }, [user, activeGroupId]);
 

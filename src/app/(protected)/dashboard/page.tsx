@@ -30,7 +30,7 @@ interface RecentActivity {
   user_id: string;
   display_name: string;
   avatar_url: string | null;
-  name: string;
+  note: string;
   workout_type: string;
   duration_minutes: number | null;
   performed_at: string;
@@ -220,7 +220,7 @@ export default function DashboardPage() {
       const { data: allWeekWorkouts } = await supabase
         .from('workouts')
         .select(
-          'id, user_id, name, workout_type, duration_minutes, performed_at'
+          'id, user_id, note, workout_type, duration_minutes, performed_at'
         )
         .in('user_id', allMemberUserIds)
         .gte('performed_at', weekStart)
@@ -230,7 +230,7 @@ export default function DashboardPage() {
       const { data: allRecentWorkouts } = await supabase
         .from('workouts')
         .select(
-          'id, user_id, name, workout_type, duration_minutes, performed_at'
+          'id, user_id, note, workout_type, duration_minutes, performed_at'
         )
         .in('user_id', allMemberUserIds)
         .order('performed_at', { ascending: false })
@@ -290,7 +290,7 @@ export default function DashboardPage() {
             user_id: w.user_id,
             display_name: profileMap.get(w.user_id)?.display_name || 'Unknown',
             avatar_url: profileMap.get(w.user_id)?.avatar_url || null,
-            name: w.name,
+            note: w.note,
             workout_type: w.workout_type,
             duration_minutes: w.duration_minutes,
             performed_at: w.performed_at,
@@ -346,7 +346,7 @@ export default function DashboardPage() {
           user_id: w.user_id,
           display_name: profileMap.get(w.user_id)?.display_name || 'Unknown',
           avatar_url: profileMap.get(w.user_id)?.avatar_url || null,
-          name: w.name,
+          note: w.note,
           workout_type: w.workout_type,
           duration_minutes: w.duration_minutes,
           performed_at: w.performed_at,
@@ -731,7 +731,7 @@ export default function DashboardPage() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-foreground truncate">
-                              {activity.name}
+                              {activity.note}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {activity.display_name}
@@ -771,7 +771,7 @@ export default function DashboardPage() {
 
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">
-                        {activity.name}
+                        {activity.note}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {activity.display_name}

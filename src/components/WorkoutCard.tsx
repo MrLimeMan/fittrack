@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock } from 'lucide-react';
+import { Clock, Pencil, Check } from 'lucide-react';
 
 interface WorkoutExercise {
   name: string;
@@ -29,6 +29,7 @@ interface WorkoutWithProfile {
   exercises: WorkoutExercise[];
   performed_at: string;
   created_at: string;
+  updated_at: string | null;
   profiles: ProfileBrief | null;
 }
 
@@ -45,6 +46,7 @@ interface WorkoutCardProps {
   currentUser: { id: string };
   reactions: ReactionWithProfile[];
   onReactionChange?: () => void;
+  onEdit?: () => void;
 }
 
 const WORKOUT_TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -113,11 +115,25 @@ function MiniAvatar({ profile, size = 'w-5 h-5' }: { profile: ProfileBrief | nul
   );
 }
 
-export default function WorkoutCard({ workout, currentUser, reactions, onReactionChange }: WorkoutCardProps) {
+export default function WorkoutCard({ workout, currentUser, reactions, onReactionChange, onEdit }: WorkoutCardProps) {
   const [toggling, setToggling] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editNote, setEditNote] = useState(workout.note ?? '');
+  const [editWorkoutType, setEditWorkoutType] = useState(workout.workout_type);
+  const [editHours, setEditHours] = useState(Math.floor((workout.duration_minutes ?? 0) / 60));
+  const [editMinutes, setEditMinutes] = useState((workout.duration_minutes ?? 0) % 60);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [locallyEdited, setLocallyEdited] = useState(false);
+
   const profile = workout.profiles;
   const typeStyle = WORKOUT_TYPE_STYLES[workout.workout_type] || WORKOUT_TYPE_STYLES.other;
   const isDetailed = workout.log_mode === 'detailed';
+  const isOwnWorkout = workout.user_id === currentUser.id;
+  const wasEdited = locallyEdited || (
+    workout.updated_at != null && workout.created_at != null &&
+    new Date(workout.updated_at).getTime() > new Date(workout.created_at).getTime()
+  );
 
   const reactionCounts = REACTION_EMOJIS.reduce((acc, emoji) => {
     acc[emoji] = reactions.filter((r) => r.workout_id === workout.id && r.emoji === emoji).length;
@@ -160,6 +176,199 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
     onReactionChange?.();
   }
 
+  function startEditing() {
+    setEditNote(workout.note ?? '');
+    setEditWorkoutType(workout.workout_type);
+    setEditHours(Math.floor((workout.duration_minutes ?? 0) / 60));
+    setEditMinutes((workout.duration_minutes ?? 0) % 60);
+    setSaved(false);
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setIsEditing(false);
+    setSaved(false);
+  }
+
+  async function saveEdit() {
+    setSaving(true);
+    const totalMinutes = editHours * 60 + editMinutes;
+
+    const { error } = await supabase
+      .from('workouts')
+      .update({
+        note: editNote || null,
+        workout_type: editWorkoutType,
+        duration_minutes: totalMinutes,
+      })
+      .eq('id', workout.id);
+
+    setSaving(false);
+
+    if (!error) {
+      // Update local display immediately
+      workout.note = editNote || null;
+      workout.workout_type = editWorkoutType;
+      workout.duration_minutes = totalMinutes;
+      setLocallyEdited(true);
+      setSaved(true);
+      setTimeout(() => {
+        setIsEditing(false);
+        setSaved(false);
+        onEdit?.();
+      }, 1200);
+    }
+  }
+
+  if (isEditing) {
+    const newTypeStyle = WORKOUT_TYPE_STYLES[editWorkoutType] || WORKOUT_TYPE_STYLES.other;
+
+    return (
+      <div className="bg-card border border-border rounded-xl p-4 shadow-sm ring-2 ring-primary/20">
+        {/* Edit header */}
+        <div className="flex items-start gap-3 mb-3">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt={profile.display_name || 'User'} className="w-full h-full object-cover" />
+            ) : (
+              <div className={`w-full h-full ${profile?.id ? getAvatarColor(profile.id) : 'bg-gray-400'} flex items-center justify-center`}>
+                <span className="text-lg font-bold text-white select-none">
+                  {getInitial(profile?.display_name ?? null)}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-semibold text-foreground truncate">
+                {profile?.display_name || 'Anonymous'}
+              </span>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${newTypeStyle.bg} ${newTypeStyle.text}`}>
+                {newTypeStyle.label}
+              </span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+              <Clock className="w-3 h-3" />
+              <span>{timeAgo(workout.performed_at)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Editable note */}
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Note</label>
+          <textarea
+            value={editNote}
+            onChange={(e) => setEditNote(e.target.value)}
+            placeholder="Add a note about your workout..."
+            rows={2}
+            className="w-full text-sm text-foreground bg-muted/50 border border-border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+        </div>
+
+        {/* Editable workout type */}
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Workout Type</label>
+          <div className="flex gap-2">
+            {Object.entries(WORKOUT_TYPE_STYLES).map(([key, style]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setEditWorkoutType(key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                  editWorkoutType === key
+                    ? `${style.bg} ${style.text} border-current`
+                    : 'bg-muted text-muted-foreground border-transparent hover:bg-muted/80'
+                }`}
+              >
+                {style.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Editable duration */}
+        <div className="mb-3">
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Duration</label>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={0}
+                max={23}
+                value={editHours}
+                onChange={(e) => setEditHours(Math.max(0, Math.min(23, parseInt(e.target.value) || 0)))}
+                className="w-16 text-sm text-foreground bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-center focus:outline-none focus:ring-1 focus:ring-primary/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-xs text-muted-foreground">h</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={0}
+                max={59}
+                value={editMinutes}
+                onChange={(e) => setEditMinutes(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+                className="w-16 text-sm text-foreground bg-muted/50 border border-border rounded-lg px-2 py-1.5 text-center focus:outline-none focus:ring-1 focus:ring-primary/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-xs text-muted-foreground">min</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Read-only exercises in detailed mode */}
+        {isDetailed && workout.exercises && workout.exercises.length > 0 && (
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Exercises (read-only)</label>
+            <div className="space-y-1.5">
+              {workout.exercises.map((ex, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 text-sm text-foreground/70 bg-muted/50 rounded-lg px-3 py-1.5"
+                >
+                  <span className="font-medium text-foreground/90">{ex.name}</span>
+                  <span className="text-xs text-muted-foreground ml-auto whitespace-nowrap">
+                    {ex.sets != null && ex.reps != null && (
+                      <span>{ex.sets} × {ex.reps}{ex.weight ? ` × ${ex.weight}` : ''}</span>
+                    )}
+                    {ex.duration != null && <span>{ex.duration}s</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Save / Cancel buttons */}
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
+          {saved ? (
+            <span className="inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400 font-medium">
+              <Check className="w-4 h-4" />
+              Saved!
+            </span>
+          ) : (
+            <>
+              <button
+                onClick={saveEdit}
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                onClick={cancelEditing}
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors border border-border disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
       {/* Header: avatar, name, time, type badge */}
@@ -191,10 +400,22 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
             >
               {typeStyle.label}
             </span>
+            {isOwnWorkout && (
+              <button
+                onClick={startEditing}
+                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Edit workout"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
             <Clock className="w-3 h-3" />
             <span>{timeAgo(workout.performed_at)}</span>
+            {wasEdited && (
+              <span className="italic">(edited)</span>
+            )}
             {workout.duration_minutes != null && (
               <>
                 <span className="mx-1">·</span>

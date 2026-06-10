@@ -17,6 +17,7 @@ import {
   ChevronDown,
   AlertCircle,
   ExternalLink,
+  Users,
 } from 'lucide-react';
 import MuscleMap from '@/components/MuscleMap';
 import { useAuth } from '@/lib/auth-context';
@@ -49,6 +50,11 @@ interface PlanExerciseItem {
   actual_sets: string;
   actual_reps: string;
   actual_weight: string;
+}
+
+interface UserGroup {
+  group_id: string;
+  group_name: string;
 }
 
 /* ──────────────────────────────────────────────
@@ -96,6 +102,101 @@ function WorkoutTypeSelector({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────
+   Post To Group Selector (shared)
+   ────────────────────────────────────────────── */
+
+function PostToSelector({
+  groups,
+  selectedGroupIds,
+  onToggleGroup,
+  onSelectAll,
+  onDeselectAll,
+}: {
+  groups: UserGroup[];
+  selectedGroupIds: string[];
+  onToggleGroup: (groupId: string) => void;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
+}) {
+  if (groups.length === 0) return null;
+
+  // Single group: auto-select, no UI needed
+  if (groups.length === 1) {
+    return (
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          Post to
+        </label>
+        <div className="flex items-center gap-2 p-3 bg-card border border-border rounded-lg">
+          <Check className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-sm text-foreground font-medium">{groups[0].group_name}</span>
+          <span className="text-xs text-muted-foreground ml-auto">auto-selected</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Multiple groups: checkboxes
+  const allSelected = selectedGroupIds.length === groups.length;
+  const someSelected = selectedGroupIds.length > 0 && !allSelected;
+
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-foreground flex items-center gap-2">
+        <Users className="h-4 w-4 text-muted-foreground" />
+        Post to
+      </label>
+      <div className="space-y-1 bg-card border border-border rounded-lg overflow-hidden">
+        {/* All Groups toggle */}
+        <label className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border">
+          <div className="relative shrink-0">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someSelected;
+              }}
+              onChange={() => (allSelected ? onDeselectAll() : onSelectAll())}
+              className="sr-only peer"
+            />
+            <div className="h-4.5 w-4.5 rounded border-2 border-border peer-checked:border-primary peer-checked:bg-primary transition-colors flex items-center justify-center">
+              {allSelected && <Check className="h-3 w-3 text-white" />}
+            </div>
+          </div>
+          <span className="text-sm font-medium text-foreground">All Groups</span>
+          <span className="text-xs text-muted-foreground ml-auto">{groups.length} groups</span>
+        </label>
+
+        {/* Individual groups */}
+        {groups.map((group) => {
+          const isSelected = selectedGroupIds.includes(group.group_id);
+          return (
+            <label
+              key={group.group_id}
+              className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 transition-colors cursor-pointer"
+            >
+              <div className="relative shrink-0">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => onToggleGroup(group.group_id)}
+                  className="sr-only peer"
+                />
+                <div className="h-4.5 w-4.5 rounded border-2 border-border peer-checked:border-primary peer-checked:bg-primary transition-colors flex items-center justify-center">
+                  {isSelected && <Check className="h-3 w-3 text-white" />}
+                </div>
+              </div>
+              <span className="text-sm text-foreground">{group.group_name}</span>
+            </label>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -214,11 +315,11 @@ function ExercisePicker({
 function QuickLogTab({
   onSaved,
   user,
-  groupId,
+  groups,
 }: {
   onSaved: () => void;
   user: NonNullable<ReturnType<typeof useAuth>['user']>;
-  groupId: string | null;
+  groups: UserGroup[];
 }) {
   const [workoutType, setWorkoutType] = useState<WorkoutType>('strength');
   const [note, setNote] = useState('');
@@ -226,6 +327,25 @@ function QuickLogTab({
   const [durationMinutes, setDurationMinutes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
+    () => groups.map((g) => g.group_id)
+  );
+
+  const handleToggleGroup = useCallback((groupId: string) => {
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
+    );
+  }, []);
+
+  const handleSelectAllGroups = useCallback(() => {
+    setSelectedGroupIds(groups.map((g) => g.group_id));
+  }, [groups]);
+
+  const handleDeselectAllGroups = useCallback(() => {
+    setSelectedGroupIds([]);
+  }, []);
 
   async function handleSubmit() {
     if (saving) return;
@@ -233,16 +353,29 @@ function QuickLogTab({
     setError(null);
 
     try {
-      const { error: insertError } = await supabase.from('workouts').insert({
+      const totalDuration = (durationHours || durationMinutes)
+        ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 +
+          (durationMinutes ? parseInt(durationMinutes, 10) : 0)
+        : null;
+
+      // Build workout payload
+      const baseWorkout = {
         user_id: user.id,
-        group_id: groupId,
         workout_type: workoutType,
-        log_mode: 'quick',
+        log_mode: 'quick' as const,
         note: note.trim() || null,
-        duration_minutes: (durationHours || durationMinutes) ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 + (durationMinutes ? parseInt(durationMinutes, 10) : 0) : null,
-        exercises: [],
+        duration_minutes: totalDuration,
+        exercises: [] as Record<string, unknown>[],
         performed_at: new Date().toISOString(),
-      });
+      };
+
+      // Insert one row per selected group
+      const insertPromises = selectedGroupIds.map((gid) =>
+        supabase.from('workouts').insert({ ...baseWorkout, group_id: gid })
+      );
+
+      const results = await Promise.all(insertPromises);
+      const insertError = results.find((r) => r.error)?.error;
 
       if (insertError) {
         setError(insertError.message);
@@ -309,6 +442,15 @@ function QuickLogTab({
         />
       </div>
 
+      {/* Post To */}
+      <PostToSelector
+        groups={groups}
+        selectedGroupIds={selectedGroupIds}
+        onToggleGroup={handleToggleGroup}
+        onSelectAll={handleSelectAllGroups}
+        onDeselectAll={handleDeselectAllGroups}
+      />
+
       {/* Error */}
       {error && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
@@ -345,12 +487,12 @@ function DetailedLogTab({
   exercises,
   onSaved,
   user,
-  groupId,
+  groups,
 }: {
   exercises: Exercise[];
   onSaved: () => void;
   user: NonNullable<ReturnType<typeof useAuth>['user']>;
-  groupId: string | null;
+  groups: UserGroup[];
 }) {
   const [workoutType, setWorkoutType] = useState<WorkoutType>('strength');
   const [durationHours, setDurationHours] = useState('');
@@ -362,6 +504,25 @@ function DetailedLogTab({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedInstructions, setExpandedInstructions] = useState<Set<number>>(new Set());
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
+    () => groups.map((g) => g.group_id)
+  );
+
+  const handleToggleGroup = useCallback((groupId: string) => {
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
+    );
+  }, []);
+
+  const handleSelectAllGroups = useCallback(() => {
+    setSelectedGroupIds(groups.map((g) => g.group_id));
+  }, [groups]);
+
+  const handleDeselectAllGroups = useCallback(() => {
+    setSelectedGroupIds([]);
+  }, []);
 
   const toggleInstructions = useCallback((index: number) => {
     setExpandedInstructions((prev) => {
@@ -432,16 +593,29 @@ function DetailedLogTab({
         notes: ex.notes || undefined,
       }));
 
-      const { error: insertError } = await supabase.from('workouts').insert({
+      const totalDuration = (durationHours || durationMinutes)
+        ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 +
+          (durationMinutes ? parseInt(durationMinutes, 10) : 0)
+        : null;
+
+      // Build workout payload
+      const baseWorkout = {
         user_id: user.id,
-        group_id: groupId,
         workout_type: workoutType,
-        log_mode: 'detailed',
+        log_mode: 'detailed' as const,
         note: note.trim() || null,
-        duration_minutes: (durationHours || durationMinutes) ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 + (durationMinutes ? parseInt(durationMinutes, 10) : 0) : null,
+        duration_minutes: totalDuration,
         exercises: exercisesData,
         performed_at: new Date().toISOString(),
-      });
+      };
+
+      // Insert one row per selected group
+      const insertPromises = selectedGroupIds.map((gid) =>
+        supabase.from('workouts').insert({ ...baseWorkout, group_id: gid })
+      );
+
+      const results = await Promise.all(insertPromises);
+      const insertError = results.find((r) => r.error)?.error;
 
       if (insertError) {
         setError(insertError.message);
@@ -686,6 +860,15 @@ function DetailedLogTab({
         </div>
       </div>
 
+      {/* Post To */}
+      <PostToSelector
+        groups={groups}
+        selectedGroupIds={selectedGroupIds}
+        onToggleGroup={handleToggleGroup}
+        onSelectAll={handleSelectAllGroups}
+        onDeselectAll={handleDeselectAllGroups}
+      />
+
       {/* Error */}
       {error && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
@@ -733,14 +916,14 @@ function FromPlanTab({
   exercises,
   onSaved,
   user,
-  groupId,
+  groups,
   initialPlanId,
 }: {
   plans: WorkoutPlan[];
   exercises: Exercise[];
   onSaved: () => void;
   user: NonNullable<ReturnType<typeof useAuth>['user']>;
-  groupId: string | null;
+  groups: UserGroup[];
   initialPlanId: string | null;
 }) {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(
@@ -755,6 +938,25 @@ function FromPlanTab({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedInstructions, setExpandedInstructions] = useState<Set<number>>(new Set());
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(
+    () => groups.map((g) => g.group_id)
+  );
+
+  const handleToggleGroup = useCallback((groupId: string) => {
+    setSelectedGroupIds((prev) =>
+      prev.includes(groupId)
+        ? prev.filter((id) => id !== groupId)
+        : [...prev, groupId]
+    );
+  }, []);
+
+  const handleSelectAllGroups = useCallback(() => {
+    setSelectedGroupIds(groups.map((g) => g.group_id));
+  }, [groups]);
+
+  const handleDeselectAllGroups = useCallback(() => {
+    setSelectedGroupIds([]);
+  }, []);
 
   const toggleInstructions = useCallback((index: number) => {
     setExpandedInstructions((prev) => {
@@ -860,17 +1062,30 @@ function FromPlanTab({
         weight: item.actual_weight || undefined,
       }));
 
-      const { error: insertError } = await supabase.from('workouts').insert({
+      const totalDuration = (durationHours || durationMinutes)
+        ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 +
+          (durationMinutes ? parseInt(durationMinutes, 10) : 0)
+        : null;
+
+      // Build workout payload
+      const baseWorkout = {
         user_id: user.id,
-        group_id: groupId,
-        workout_type: 'strength',
-        log_mode: 'detailed',
+        workout_type: 'strength' as const,
+        log_mode: 'detailed' as const,
         note: note.trim() || null,
-        duration_minutes: (durationHours || durationMinutes) ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 + (durationMinutes ? parseInt(durationMinutes, 10) : 0) : null,
+        duration_minutes: totalDuration,
         exercises: exercisesData,
         plan_id: selectedPlanId,
         performed_at: new Date().toISOString(),
-      });
+      };
+
+      // Insert one row per selected group
+      const insertPromises = selectedGroupIds.map((gid) =>
+        supabase.from('workouts').insert({ ...baseWorkout, group_id: gid })
+      );
+
+      const results = await Promise.all(insertPromises);
+      const insertError = results.find((r) => r.error)?.error;
 
       if (insertError) {
         setError(insertError.message);
@@ -1189,6 +1404,15 @@ function FromPlanTab({
         </div>
       </div>
 
+      {/* Post To */}
+      <PostToSelector
+        groups={groups}
+        selectedGroupIds={selectedGroupIds}
+        onToggleGroup={handleToggleGroup}
+        onSelectAll={handleSelectAllGroups}
+        onDeselectAll={handleDeselectAllGroups}
+      />
+
       {/* Error */}
       {error && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm">
@@ -1249,7 +1473,7 @@ export default function LogWorkoutPage() {
   const [tab, setTab] = useState<LogTab>('quick');
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [plans, setPlans] = useState<WorkoutPlan[]>([]);
-  const [groupId, setGroupId] = useState<string | null>(null);
+  const [groups, setGroups] = useState<UserGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -1283,12 +1507,11 @@ export default function LogWorkoutPage() {
         .eq('is_template', false)
         .order('created_at', { ascending: false });
 
-      // Fetch user's group membership
+      // Fetch user's group memberships with group names
       const groupPromise = supabase
         .from('group_members')
-        .select('group_id')
-        .eq('user_id', user!.id)
-        .limit(1);
+        .select('group_id, groups(name)')
+        .eq('user_id', user!.id);
 
       const [exercisesResult, plansResult, groupResult] = await Promise.all([
         exercisesPromise,
@@ -1298,8 +1521,14 @@ export default function LogWorkoutPage() {
 
       if (exercisesResult.data) setExercises(exercisesResult.data);
       if (plansResult.data) setPlans(plansResult.data);
-      if (groupResult.data && groupResult.data.length > 0) {
-        setGroupId(groupResult.data[0].group_id);
+      if (groupResult.data) {
+        const userGroups: UserGroup[] = groupResult.data.map(
+          (gm: { group_id: string; groups: { name: string }[] | null }) => ({
+            group_id: gm.group_id,
+            group_name: gm.groups?.[0]?.name ?? 'Unknown Group',
+          })
+        );
+        setGroups(userGroups);
       }
 
       setLoading(false);
@@ -1373,7 +1602,7 @@ export default function LogWorkoutPage() {
               <QuickLogTab
                 onSaved={handleSaved}
                 user={user}
-                groupId={groupId}
+                groups={groups}
               />
             )}
             {tab === 'detailed' && (
@@ -1381,7 +1610,7 @@ export default function LogWorkoutPage() {
                 exercises={exercises}
                 onSaved={handleSaved}
                 user={user}
-                groupId={groupId}
+                groups={groups}
               />
             )}
             {tab === 'plan' && (
@@ -1390,7 +1619,7 @@ export default function LogWorkoutPage() {
                 exercises={exercises}
                 onSaved={handleSaved}
                 user={user}
-                groupId={groupId}
+                groups={groups}
                 initialPlanId={initialPlanId}
               />
             )}

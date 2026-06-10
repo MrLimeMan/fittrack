@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import WeightTracker from '@/components/WeightTracker';
+import GroupSwitcher from '@/components/GroupSwitcher';
 import type { Workout, Group, GroupMember, Profile } from '@/lib/types';
 
 interface LeaderboardEntry {
@@ -113,6 +114,11 @@ export default function DashboardPage() {
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+
+  const handleGroupChange = useCallback((groupId: string | null) => {
+    setActiveGroupId(groupId);
+  }, []);
 
   const fetchDashboardData = useCallback(async () => {
     if (!user || !profile) return;
@@ -122,54 +128,60 @@ export default function DashboardPage() {
 
     try {
       // 1. Find user's group membership
-      const { data: membership, error: memberError } = await supabase
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single();
+      let targetGroupId = activeGroupId;
 
-      if (memberError || !membership) {
-        // No group — show empty state
-        setGroup(null);
-
-        // Still fetch user's own workouts
-        const weekStart = getWeekStart();
-        const { data: myWorkouts } = await supabase
-          .from('workouts')
-          .select('*')
+      if (!targetGroupId) {
+        const { data: membership, error: memberError } = await supabase
+          .from('group_members')
+          .select('group_id')
           .eq('user_id', user.id)
-          .gte('performed_at', weekStart)
-          .order('performed_at', { ascending: false });
+          .limit(1)
+          .single();
 
-        if (myWorkouts) {
-          setWorkoutsThisWeek(myWorkouts.length);
-          setTotalMinutesThisWeek(
-            myWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0)
-          );
+        if (memberError || !membership) {
+          // No group — show empty state
+          setGroup(null);
+
+          // Still fetch user's own workouts
+          const weekStart = getWeekStart();
+          const { data: myWorkouts } = await supabase
+            .from('workouts')
+            .select('*')
+            .eq('user_id', user.id)
+            .gte('performed_at', weekStart)
+            .order('performed_at', { ascending: false });
+
+          if (myWorkouts) {
+            setWorkoutsThisWeek(myWorkouts.length);
+            setTotalMinutesThisWeek(
+              myWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0)
+            );
+          }
+
+          // Still calculate streak from all user workouts
+          const { data: allMyWorkouts } = await supabase
+            .from('workouts')
+            .select('performed_at')
+            .eq('user_id', user.id)
+            .order('performed_at', { ascending: false })
+            .limit(365);
+
+          if (allMyWorkouts) {
+            setStreak(calculateStreak(allMyWorkouts));
+          }
+
+          setLoading(false);
+          return;
         }
 
-        // Still calculate streak from all user workouts
-        const { data: allMyWorkouts } = await supabase
-          .from('workouts')
-          .select('performed_at')
-          .eq('user_id', user.id)
-          .order('performed_at', { ascending: false })
-          .limit(365);
-
-        if (allMyWorkouts) {
-          setStreak(calculateStreak(allMyWorkouts));
-        }
-
-        setLoading(false);
-        return;
+        targetGroupId = membership.group_id;
       }
 
       // 2. Fetch group details
       const { data: groupData } = await supabase
         .from('groups')
         .select('*')
-        .eq('id', membership.group_id)
+        .eq('id', targetGroupId)
         .single();
 
       setGroup(groupData);
@@ -178,7 +190,7 @@ export default function DashboardPage() {
       const { data: members } = await supabase
         .from('group_members')
         .select('user_id, role')
-        .eq('group_id', membership.group_id);
+        .eq('group_id', targetGroupId);
 
       if (!members) {
         setLoading(false);
@@ -280,13 +292,14 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, profile]);
+  }, [user, profile, activeGroupId]);
 
+  // Refetch when active group changes
   useEffect(() => {
-    if (!authLoading && user && profile) {
+    if (!authLoading && user && profile && activeGroupId !== undefined) {
       fetchDashboardData();
     }
-  }, [authLoading, user, profile, fetchDashboardData]);
+  }, [authLoading, user, profile, activeGroupId, fetchDashboardData]);
 
   // Auth loading state
   if (authLoading) {
@@ -388,11 +401,6 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-          {group && (
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {group.name}
-            </p>
-          )}
         </div>
         <div className="text-sm text-muted-foreground">
           {new Date().toLocaleDateString('en-US', {
@@ -401,6 +409,11 @@ export default function DashboardPage() {
             day: 'numeric',
           })}
         </div>
+      </div>
+
+      {/* Group Switcher */}
+      <div>
+        <GroupSwitcher onSelect={handleGroupChange} />
       </div>
 
       {/* Loading skeleton */}

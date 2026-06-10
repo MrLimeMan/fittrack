@@ -6,6 +6,7 @@ import { RefreshCw, Users, Plus } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/auth-context';
 import WorkoutCard from '@/components/WorkoutCard';
+import GroupSwitcher from '@/components/GroupSwitcher';
 
 interface WorkoutExercise {
   name: string;
@@ -26,6 +27,7 @@ interface WorkoutWithProfile {
   exercises: WorkoutExercise[];
   performed_at: string;
   created_at: string;
+  updated_at: string | null;
   profiles: {
     id: string;
     display_name: string | null;
@@ -56,6 +58,11 @@ export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasGroup, setHasGroup] = useState<boolean | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+
+  const handleGroupChange = useCallback((groupId: string | null) => {
+    setActiveGroupId(groupId);
+  }, []);
 
   const fetchFeed = useCallback(async (isRefresh = false) => {
     if (!user) return;
@@ -81,7 +88,9 @@ export default function FeedPage() {
       }
 
       setHasGroup(true);
-      const groupIds = memberships.map((m: GroupMembership) => m.group_id);
+      const groupIds = activeGroupId
+        ? [activeGroupId]
+        : memberships.map((m: GroupMembership) => m.group_id);
 
       // Fetch workouts for user's groups, joined with profile info
       const { data: workoutData, error: workoutError } = await supabase
@@ -125,7 +134,7 @@ export default function FeedPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [user, activeGroupId]);
 
   useEffect(() => {
     if (user) {
@@ -182,7 +191,7 @@ export default function FeedPage() {
   if (workouts.length === 0 && !loading) {
     return (
       <div className="px-4 py-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold text-foreground">Feed</h1>
           <button
             onClick={handleRefresh}
@@ -194,6 +203,12 @@ export default function FeedPage() {
             />
           </button>
         </div>
+
+        {/* Group Switcher */}
+        <div className="mb-4">
+          <GroupSwitcher onSelect={handleGroupChange} />
+        </div>
+
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-muted-foreground mb-2">No workouts yet</p>
           <p className="text-sm text-muted-foreground/70">
@@ -207,7 +222,7 @@ export default function FeedPage() {
   // Feed with workouts
   return (
     <div className="px-4 py-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-foreground">Feed</h1>
         <button
           onClick={handleRefresh}
@@ -218,6 +233,11 @@ export default function FeedPage() {
             className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`}
           />
         </button>
+      </div>
+
+      {/* Group Switcher */}
+      <div className="mb-4">
+        <GroupSwitcher onSelect={handleGroupChange} />
       </div>
 
       {refreshing && (
@@ -234,6 +254,7 @@ export default function FeedPage() {
             currentUser={{ id: user!.id }}
             reactions={reactions.filter((r) => r.workout_id === workout.id)}
             onReactionChange={handleRefresh}
+            onEdit={handleRefresh}
           />
         ))}
       </div>

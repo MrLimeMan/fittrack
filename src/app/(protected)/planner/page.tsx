@@ -19,20 +19,32 @@ const STARTER_TEMPLATES = [
     is_public: true,
   },
   {
-    name: 'Push Pull Legs',
-    description: 'Classic 3-day split focusing on push, pull, and leg movements for balanced growth.',
+    name: 'Quick Hit (20-30 Min)',
+    description: 'For the busy days. A fast full-body blast you can do anywhere. Minimal rest, maximum efficiency.',
     group_id: null as string | null,
     is_public: true,
   },
   {
-    name: 'HIIT Cardio Blast',
-    description: 'High-intensity interval training to burn calories and boost cardiovascular fitness.',
+    name: 'Big 5 Strength',
+    description: 'The five foundational barbell lifts: Squat, Bench, Deadlift, OHP, and Row. Simple and effective.',
     group_id: null as string | null,
     is_public: true,
   },
   {
-    name: 'Mobility & Recovery',
-    description: 'Gentle stretching and mobility work to improve flexibility and aid recovery.',
+    name: 'Home Workout (No Equipment)',
+    description: 'Complete workout you can do anywhere with zero equipment. Strength and cardio combined.',
+    group_id: null as string | null,
+    is_public: true,
+  },
+  {
+    name: 'Push/Pull/Legs Split',
+    description: 'Classic 3-day split. Push (chest/shoulders/triceps), Pull (back/biceps), Legs (quads/hamstrings/glutes).',
+    group_id: null as string | null,
+    is_public: true,
+  },
+  {
+    name: 'Calisthenics Progression',
+    description: 'Bodyweight-focused program with progressive difficulty. Build up to advanced skills.',
     group_id: null as string | null,
     is_public: true,
   },
@@ -124,6 +136,8 @@ export default function PlannerPage() {
   async function useTemplate(template: (typeof STARTER_TEMPLATES)[number]) {
     if (!user) return;
     setCreating(true);
+
+    // Create the new plan
     const { data, error } = await supabase
       .from('workout_plans')
       .insert({
@@ -135,10 +149,45 @@ export default function PlannerPage() {
       })
       .select()
       .single();
-    setCreating(false);
-    if (data && !error) {
-      router.push(`/planner/${data.id}`);
+
+    if (error || !data) {
+      setCreating(false);
+      return;
     }
+
+    // Find the template plan and copy its exercises
+    const { data: templatePlan } = await supabase
+      .from('workout_plans')
+      .select('id')
+      .eq('name', template.name)
+      .eq('is_template', true)
+      .limit(1)
+      .single();
+
+    if (templatePlan) {
+      const { data: templateExercises } = await supabase
+        .from('workout_plan_exercises')
+        .select('*')
+        .eq('plan_id', templatePlan.id)
+        .order('order_index');
+
+      if (templateExercises && templateExercises.length > 0) {
+        const exercisesToInsert = templateExercises.map((te) => ({
+          plan_id: data.id,
+          exercise_id: te.exercise_id,
+          order_index: te.order_index,
+          target_sets: te.target_sets,
+          target_reps: te.target_reps,
+          target_weight: te.target_weight,
+          target_duration: te.target_duration,
+          notes: te.notes,
+        }));
+        await supabase.from('workout_plan_exercises').insert(exercisesToInsert);
+      }
+    }
+
+    setCreating(false);
+    router.push(`/planner/${data.id}`);
   }
 
   return (

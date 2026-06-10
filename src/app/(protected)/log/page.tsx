@@ -15,7 +15,9 @@ import {
   Trash2,
   ChevronRight,
   AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
+import MuscleMap from '@/components/MuscleMap';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import type { Exercise, WorkoutPlan, WorkoutPlanExercise } from '@/lib/types';
@@ -517,7 +519,9 @@ function DetailedLogTab({
         )}
 
         <div className="space-y-3">
-          {exerciseList.map((ex, index) => (
+          {exerciseList.map((ex, index) => {
+            const fullExercise = exercises.find((e) => e.id === ex.exercise_id);
+            return (
             <div
               key={`${ex.exercise_id}-${index}`}
               className="bg-card border border-border rounded-xl p-3 space-y-3"
@@ -540,6 +544,26 @@ function DetailedLogTab({
                   <Trash2 className="h-4 w-4" />
                 </button>
               </div>
+
+              {/* Muscle map + tutorial */}
+              {fullExercise && (
+                <div className="space-y-2">
+                  <div className="flex justify-center">
+                    <MuscleMap muscleGroups={fullExercise.muscle_groups} size="sm" />
+                  </div>
+                  {fullExercise.demo_url && (
+                    <a
+                      href={fullExercise.demo_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Watch Tutorial
+                    </a>
+                  )}
+                </div>
+              )}
 
               {/* Inputs */}
               <div className="grid grid-cols-3 gap-2">
@@ -600,7 +624,8 @@ function DetailedLogTab({
                 className="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-foreground text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
 
@@ -927,7 +952,9 @@ function FromPlanTab({
         )}
 
         <div className="space-y-3">
-          {planExercises.map((item, index) => (
+          {planExercises.map((item, index) => {
+            const fullExercise = exercises.find((e) => e.id === item.exercise_id);
+            return (
             <div
               key={item.workout_plan_exercise_id}
               className="bg-card border border-border rounded-xl p-3 space-y-3"
@@ -941,6 +968,26 @@ function FromPlanTab({
                   {item.exercise_name}
                 </span>
               </div>
+
+              {/* Muscle map + tutorial */}
+              {fullExercise && (
+                <div className="space-y-2">
+                  <div className="flex justify-center">
+                    <MuscleMap muscleGroups={fullExercise.muscle_groups} size="sm" />
+                  </div>
+                  {fullExercise.demo_url && (
+                    <a
+                      href={fullExercise.demo_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Watch Tutorial
+                    </a>
+                  )}
+                </div>
+              )}
 
               {/* Target info */}
               {(item.target_sets || item.target_reps) && (
@@ -1024,7 +1071,8 @@ function FromPlanTab({
                 </div>
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
 

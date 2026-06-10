@@ -77,6 +77,7 @@ export interface Exercise {
   is_custom: boolean;
   created_by: string | null;
   created_at: string;
+  demo_url: string | null;
 }
 
 export interface WorkoutPlan {

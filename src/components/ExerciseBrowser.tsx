@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, ChevronDown, ChevronUp, X, Check } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, X, Check, ExternalLink } from 'lucide-react';
+import MuscleMap from '@/components/MuscleMap';
 import type {
   Exercise,
   ExerciseCategory,
@@ -305,6 +306,24 @@ export default function ExerciseBrowser({
                       ))}
                     </div>
                   </div>
+
+                  {/* Muscle map */}
+                  <div className="flex justify-center">
+                    <MuscleMap muscleGroups={exercise.muscle_groups} size="sm" />
+                  </div>
+
+                  {/* Tutorial link */}
+                  {exercise.demo_url && (
+                    <a
+                      href={exercise.demo_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Watch Tutorial
+                    </a>
+                  )}
 
                   {showSelectButton && onSelect && (
                     <button

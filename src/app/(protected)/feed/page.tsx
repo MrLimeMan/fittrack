@@ -154,14 +154,14 @@ export default function FeedPage() {
         </p>
         <div className="flex gap-3">
           <Link
-            href="/groups/create"
+            href="/group/create"
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Create Group
           </Link>
           <Link
-            href="/groups/join"
+            href="/group/join"
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-muted text-foreground rounded-lg font-medium text-sm hover:bg-muted/80 transition-colors border border-border"
           >
             Join Group

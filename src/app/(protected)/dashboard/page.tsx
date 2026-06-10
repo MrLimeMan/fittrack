@@ -316,7 +316,7 @@ export default function DashboardPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Link
-            href="/groups/create"
+            href="/group/create"
             className="block bg-card border border-border rounded-xl p-6 text-center hover-lift transition-colors hover:border-primary"
           >
             <div className="text-3xl mb-3">➕</div>
@@ -327,7 +327,7 @@ export default function DashboardPage() {
           </Link>
 
           <Link
-            href="/groups/join"
+            href="/group/join"
             className="block bg-card border border-border rounded-xl p-6 text-center hover-lift transition-colors hover:border-primary"
           >
             <div className="text-3xl mb-3">🤝</div>

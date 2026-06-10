@@ -78,23 +78,14 @@ export default function PlanEditorPage() {
     setLoading(true);
     const { data: peRows } = await supabase
       .from('workout_plan_exercises')
-      .select('*')
+      .select('*, exercises(name)')
       .eq('plan_id', planId)
       .order('order_index');
 
     if (peRows && peRows.length > 0) {
-      const exerciseIds = peRows.map((r) => r.exercise_id);
-      const { data: exercises } = await supabase
-        .from('exercises')
-        .select('*')
-        .in('id', exerciseIds);
-
-      const exMap = new Map<string, Exercise>();
-      if (exercises) exercises.forEach((e) => exMap.set(e.id, e));
-
       const items: PlanExerciseItem[] = peRows.map((row) => ({
         ...row,
-        exercise: exMap.get(row.exercise_id),
+        exercise: (row as any).exercises ?? undefined,
       }));
       setPlanExercises(items);
     } else {
@@ -117,17 +108,63 @@ export default function PlanEditorPage() {
       .update({ name, description: description || null })
       .eq('id', plan.id);
 
-    // Update exercise details (sets/reps/etc)
+    const newExercises: PlanExerciseItem[] = [];
+    const existingExercises: PlanExerciseItem[] = [];
+
     for (const pe of planExercises) {
+      if (pe.id.startsWith('temp-')) {
+        newExercises.push(pe);
+      } else {
+        existingExercises.push(pe);
+      }
+    }
+
+    // Insert new exercises into workout_plan_exercises
+    if (newExercises.length > 0) {
+      const insertRows = newExercises.map((pe) => ({
+        plan_id: planId,
+        exercise_id: pe.exercise_id,
+        order_index: pe.order_index,
+        target_sets: pe.target_sets != null ? Number(pe.target_sets) : null,
+        target_reps: pe.target_reps != null ? String(pe.target_reps) : null,
+        target_duration: pe.target_duration != null ? Number(pe.target_duration) : null,
+        notes: pe.notes || null,
+      }));
+
+      const { data: inserted, error } = await supabase
+        .from('workout_plan_exercises')
+        .insert(insertRows)
+        .select();
+
+      if (error) {
+        console.error('Error inserting exercises:', error);
+      }
+
+      // Update local state with real IDs from the DB
+      if (inserted && inserted.length > 0) {
+        setPlanExercises((prev) =>
+          prev.map((pe) => {
+            if (!pe.id.startsWith('temp-')) return pe;
+            const matchIndex = newExercises.findIndex((ne) => ne.id === pe.id);
+            if (matchIndex >= 0 && inserted[matchIndex]) {
+              return { ...pe, id: inserted[matchIndex].id };
+            }
+            return pe;
+          })
+        );
+      }
+    }
+
+    // Update existing exercises
+    for (const pe of existingExercises) {
       await supabase
         .from('workout_plan_exercises')
         .update({
           order_index: pe.order_index,
-          sets: pe.sets,
-          reps: pe.reps,
-          duration_seconds: pe.duration_seconds,
-          rest_seconds: pe.rest_seconds,
-          notes: pe.notes,
+          target_sets: pe.target_sets != null ? Number(pe.target_sets) : null,
+          target_reps: pe.target_reps != null ? String(pe.target_reps) : null,
+          target_duration: pe.target_duration != null ? Number(pe.target_duration) : null,
+          notes: pe.notes || null,
         })
         .eq('id', pe.id);
     }
@@ -141,10 +178,10 @@ export default function PlanEditorPage() {
       plan_id: planId,
       exercise_id: exercise.id,
       order_index: planExercises.length,
-      sets: 3,
-      reps: 10,
-      duration_seconds: null,
-      rest_seconds: 60,
+      target_sets: 3,
+      target_reps: '10',
+      target_weight: null,
+      target_duration: null,
       notes: null,
       created_at: new Date().toISOString(),
       exercise,
@@ -181,7 +218,7 @@ export default function PlanEditorPage() {
 
   function updateExerciseField(
     index: number,
-    field: 'sets' | 'reps' | 'duration_seconds' | 'rest_seconds' | 'notes',
+    field: 'target_sets' | 'target_reps' | 'target_weight' | 'target_duration' | 'notes',
     value: number | string | null
   ) {
     setPlanExercises((prev) =>
@@ -349,7 +386,7 @@ export default function PlanEditorPage() {
                 </button>
               </div>
 
-              {/* Sets / Reps / Rest inputs */}
+              {/* Sets / Reps / Duration / Weight inputs */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pl-8">
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-muted-foreground">
@@ -358,11 +395,11 @@ export default function PlanEditorPage() {
                   <input
                     type="number"
                     min={1}
-                    value={pe.sets ?? ''}
+                    value={pe.target_sets ?? ''}
                     onChange={(e) =>
                       updateExerciseField(
                         index,
-                        'sets',
+                        'target_sets',
                         e.target.value ? parseInt(e.target.value) : null
                       )
                     }
@@ -374,17 +411,17 @@ export default function PlanEditorPage() {
                     Reps
                   </label>
                   <input
-                    type="number"
-                    min={1}
-                    value={pe.reps ?? ''}
+                    type="text"
+                    placeholder="e.g. 8-12"
+                    value={pe.target_reps ?? ''}
                     onChange={(e) =>
                       updateExerciseField(
                         index,
-                        'reps',
-                        e.target.value ? parseInt(e.target.value) : null
+                        'target_reps',
+                        e.target.value || null
                       )
                     }
-                    className="w-full px-2.5 py-1.5 text-sm bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full px-2.5 py-1.5 text-sm bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
                 <div className="space-y-1">
@@ -394,11 +431,11 @@ export default function PlanEditorPage() {
                   <input
                     type="number"
                     min={0}
-                    value={pe.duration_seconds ?? ''}
+                    value={pe.target_duration ?? ''}
                     onChange={(e) =>
                       updateExerciseField(
                         index,
-                        'duration_seconds',
+                        'target_duration',
                         e.target.value ? parseInt(e.target.value) : null
                       )
                     }
@@ -407,20 +444,20 @@ export default function PlanEditorPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-medium text-muted-foreground">
-                    Rest (s)
+                    Weight
                   </label>
                   <input
-                    type="number"
-                    min={0}
-                    value={pe.rest_seconds ?? ''}
+                    type="text"
+                    placeholder="e.g. 135 lbs"
+                    value={pe.target_weight ?? ''}
                     onChange={(e) =>
                       updateExerciseField(
                         index,
-                        'rest_seconds',
-                        e.target.value ? parseInt(e.target.value) : null
+                        'target_weight',
+                        e.target.value || null
                       )
                     }
-                    className="w-full px-2.5 py-1.5 text-sm bg-muted border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="w-full px-2.5 py-1.5 text-sm bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
                   />
                 </div>
               </div>

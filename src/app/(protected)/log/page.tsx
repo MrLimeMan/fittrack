@@ -10,7 +10,6 @@ import {
   X,
   Search,
   Dumbbell,
-  Clock,
   Check,
   Loader2,
   Trash2,
@@ -43,7 +42,7 @@ interface PlanExerciseItem {
   exercise_id: string;
   exercise_name: string;
   target_sets: number | null;
-  target_reps: number | null;
+  target_reps: string | null;
   actual_sets: string;
   actual_reps: string;
   actual_weight: string;
@@ -220,7 +219,8 @@ function QuickLogTab({
 }) {
   const [workoutType, setWorkoutType] = useState<WorkoutType>('strength');
   const [note, setNote] = useState('');
-  const [duration, setDuration] = useState('');
+  const [durationHours, setDurationHours] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -236,7 +236,7 @@ function QuickLogTab({
         workout_type: workoutType,
         log_mode: 'quick',
         note: note.trim() || null,
-        duration_minutes: duration ? parseInt(duration, 10) : null,
+        duration_minutes: (durationHours || durationMinutes) ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 + (durationMinutes ? parseInt(durationMinutes, 10) : 0) : null,
         exercises: [],
         performed_at: new Date().toISOString(),
       });
@@ -269,16 +269,25 @@ function QuickLogTab({
         <label className="text-sm font-medium text-foreground">
           Duration <span className="text-muted-foreground font-normal">(optional)</span>
         </label>
-        <div className="relative">
-          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center justify-center gap-3">
           <input
             type="number"
-            placeholder="Minutes"
+            placeholder="00"
             min={0}
-            max={600}
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            max={23}
+            value={durationHours}
+            onChange={(e) => setDurationHours(e.target.value)}
+            className="w-20 px-3 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm text-center"
+          />
+          <span className="text-2xl font-bold text-foreground">:</span>
+          <input
+            type="number"
+            placeholder="00"
+            min={0}
+            max={59}
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(e.target.value)}
+            className="w-20 px-3 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm text-center"
           />
         </div>
       </div>
@@ -341,7 +350,8 @@ function DetailedLogTab({
   groupId: string | null;
 }) {
   const [workoutType, setWorkoutType] = useState<WorkoutType>('strength');
-  const [duration, setDuration] = useState('');
+  const [durationHours, setDurationHours] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState('');
   const [note, setNote] = useState('');
   const [exerciseList, setExerciseList] = useState<DetailedExercise[]>([]);
   const [showPicker, setShowPicker] = useState(false);
@@ -404,7 +414,7 @@ function DetailedLogTab({
         workout_type: workoutType,
         log_mode: 'detailed',
         note: note.trim() || null,
-        duration_minutes: duration ? parseInt(duration, 10) : null,
+        duration_minutes: (durationHours || durationMinutes) ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 + (durationMinutes ? parseInt(durationMinutes, 10) : 0) : null,
         exercises: exercisesData,
         performed_at: new Date().toISOString(),
       });
@@ -435,18 +445,27 @@ function DetailedLogTab({
       {/* Duration */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-foreground">
-          Duration <span className="text-muted-foreground font-normal">(minutes)</span>
+          Duration <span className="text-muted-foreground font-normal">(optional)</span>
         </label>
-        <div className="relative">
-          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center justify-center gap-3">
           <input
             type="number"
-            placeholder="e.g. 45"
+            placeholder="00"
             min={0}
-            max={600}
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            max={23}
+            value={durationHours}
+            onChange={(e) => setDurationHours(e.target.value)}
+            className="w-20 px-3 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm text-center"
+          />
+          <span className="text-2xl font-bold text-foreground">:</span>
+          <input
+            type="number"
+            placeholder="00"
+            min={0}
+            max={59}
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(e.target.value)}
+            className="w-20 px-3 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm text-center"
           />
         </div>
       </div>
@@ -647,7 +666,8 @@ function FromPlanTab({
   );
   const [planExercises, setPlanExercises] = useState<PlanExerciseItem[]>([]);
   const [loadingPlan, setLoadingPlan] = useState(false);
-  const [duration, setDuration] = useState('');
+  const [durationHours, setDurationHours] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -666,7 +686,7 @@ function FromPlanTab({
       try {
         const { data, error: fetchError } = await supabase
           .from('workout_plan_exercises')
-          .select('*')
+          .select('*, exercises(name)')
           .eq('plan_id', selectedPlanId!)
           .order('order_index');
 
@@ -678,19 +698,16 @@ function FromPlanTab({
 
         if (data) {
           const items: PlanExerciseItem[] = data.map(
-            (wpe: WorkoutPlanExercise) => {
-              const exercise = exercises.find((e) => e.id === wpe.exercise_id);
-              return {
-                workout_plan_exercise_id: wpe.id,
-                exercise_id: wpe.exercise_id,
-                exercise_name: exercise?.name ?? 'Unknown Exercise',
-                target_sets: wpe.sets,
-                target_reps: wpe.reps,
-                actual_sets: '',
-                actual_reps: '',
-                actual_weight: '',
-              };
-            }
+            (wpe: WorkoutPlanExercise & { exercises?: { name: string } }) => ({
+              workout_plan_exercise_id: wpe.id,
+              exercise_id: wpe.exercise_id,
+              exercise_name: wpe.exercises?.name ?? 'Unknown Exercise',
+              target_sets: wpe.target_sets,
+              target_reps: wpe.target_reps,
+              actual_sets: '',
+              actual_reps: '',
+              actual_weight: '',
+            })
           );
           setPlanExercises(items);
         }
@@ -746,7 +763,7 @@ function FromPlanTab({
         workout_type: 'strength',
         log_mode: 'detailed',
         note: note.trim() || null,
-        duration_minutes: duration ? parseInt(duration, 10) : null,
+        duration_minutes: (durationHours || durationMinutes) ? (durationHours ? parseInt(durationHours, 10) : 0) * 60 + (durationMinutes ? parseInt(durationMinutes, 10) : 0) : null,
         exercises: exercisesData,
         plan_id: selectedPlanId,
         performed_at: new Date().toISOString(),
@@ -849,18 +866,27 @@ function FromPlanTab({
       {/* Duration */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-foreground">
-          Duration <span className="text-muted-foreground font-normal">(minutes)</span>
+          Duration <span className="text-muted-foreground font-normal">(optional)</span>
         </label>
-        <div className="relative">
-          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex items-center justify-center gap-3">
           <input
             type="number"
-            placeholder="e.g. 45"
+            placeholder="00"
             min={0}
-            max={600}
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            max={23}
+            value={durationHours}
+            onChange={(e) => setDurationHours(e.target.value)}
+            className="w-20 px-3 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm text-center"
+          />
+          <span className="text-2xl font-bold text-foreground">:</span>
+          <input
+            type="number"
+            placeholder="00"
+            min={0}
+            max={59}
+            value={durationMinutes}
+            onChange={(e) => setDurationMinutes(e.target.value)}
+            className="w-20 px-3 py-2.5 bg-card border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring text-sm text-center"
           />
         </div>
       </div>
@@ -1092,7 +1118,8 @@ export default function LogWorkoutPage() {
       const plansPromise = supabase
         .from('workout_plans')
         .select('*')
-        .eq('created_by', user!.id)
+        .eq('user_id', user!.id)
+        .eq('is_template', false)
         .order('updated_at', { ascending: false });
 
       // Fetch user's group membership

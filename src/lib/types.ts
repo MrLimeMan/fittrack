@@ -97,10 +97,10 @@ export interface WorkoutPlanExercise {
   plan_id: string;
   exercise_id: string;
   order_index: number;
-  sets: number | null;
-  reps: number | null;
-  duration_seconds: number | null;
-  rest_seconds: number | null;
+  target_sets: number | null;
+  target_reps: string | null;
+  target_weight: string | null;
+  target_duration: number | null;
   notes: string | null;
   created_at: string;
 }

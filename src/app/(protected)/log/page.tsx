@@ -494,12 +494,36 @@ function DetailedLogTab({
   user: NonNullable<ReturnType<typeof useAuth>['user']>;
   groups: UserGroup[];
 }) {
-  const [workoutType, setWorkoutType] = useState<WorkoutType>('strength');
-  const [durationHours, setDurationHours] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState('');
-  const [note, setNote] = useState('');
-  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
-  const [exerciseList, setExerciseList] = useState<DetailedExercise[]>([]);
+  // Restore from localStorage
+  const savedDetailed = (() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('fittrack_log_detailed');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  })();
+
+  const [workoutType, setWorkoutType] = useState<WorkoutType>(savedDetailed?.workoutType || 'strength');
+  const [durationHours, setDurationHours] = useState(savedDetailed?.durationHours || '');
+  const [durationMinutes, setDurationMinutes] = useState(savedDetailed?.durationMinutes || '');
+  const [note, setNote] = useState(savedDetailed?.note || '');
+  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>(savedDetailed?.weightUnit || 'lbs');
+  const [exerciseList, setExerciseList] = useState<DetailedExercise[]>(savedDetailed?.exerciseList || []);
+
+  // Persist to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('fittrack_log_detailed', JSON.stringify({
+        workoutType, durationHours, durationMinutes, note, weightUnit, exerciseList,
+      }));
+    } catch {}
+  }, [workoutType, durationHours, durationMinutes, note, weightUnit, exerciseList]);
+
+  // Clear draft from localStorage
+  const clearDetailedDraft = useCallback(() => {
+    localStorage.removeItem('fittrack_log_detailed');
+  }, []);
+
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -622,6 +646,7 @@ function DetailedLogTab({
         return;
       }
 
+      clearDetailedDraft();
       onSaved();
     } catch {
       setError('Something went wrong. Please try again.');
@@ -894,6 +919,25 @@ function DetailedLogTab({
         )}
       </button>
 
+      {/* Clear Draft */}
+      {savedDetailed && (
+        <button
+          type="button"
+          onClick={() => {
+            clearDetailedDraft();
+            setWorkoutType('strength');
+            setDurationHours('');
+            setDurationMinutes('');
+            setNote('');
+            setWeightUnit('lbs');
+            setExerciseList([]);
+          }}
+          className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Clear draft
+        </button>
+      )}
+
       {/* Exercise Picker Modal */}
       {showPicker && (
         <ExercisePicker
@@ -926,15 +970,44 @@ function FromPlanTab({
   groups: UserGroup[];
   initialPlanId: string | null;
 }) {
+  // Restore from localStorage
+  const savedPlanDraft = (() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('fittrack_log_plan');
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  })();
+
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(
-    initialPlanId
+    initialPlanId || savedPlanDraft?.selectedPlanId || null
   );
-  const [planExercises, setPlanExercises] = useState<PlanExerciseItem[]>([]);
+  const [restoredPlanExercises] = useState<PlanExerciseItem[]>(
+    savedPlanDraft?.planExercises || []
+  );
+  const [planExercises, setPlanExercises] = useState<PlanExerciseItem[]>(
+    savedPlanDraft?.planExercises || []
+  );
   const [loadingPlan, setLoadingPlan] = useState(false);
-  const [durationHours, setDurationHours] = useState('');
-  const [durationMinutes, setDurationMinutes] = useState('');
-  const [note, setNote] = useState('');
-  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
+  const [durationHours, setDurationHours] = useState(savedPlanDraft?.durationHours || '');
+  const [durationMinutes, setDurationMinutes] = useState(savedPlanDraft?.durationMinutes || '');
+  const [note, setNote] = useState(savedPlanDraft?.note || '');
+  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>(savedPlanDraft?.weightUnit || 'lbs');
+
+  // Persist to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('fittrack_log_plan', JSON.stringify({
+        selectedPlanId, planExercises, durationHours, durationMinutes, note, weightUnit,
+      }));
+    } catch {}
+  }, [selectedPlanId, planExercises, durationHours, durationMinutes, note, weightUnit]);
+
+  // Clear draft from localStorage
+  const clearPlanDraft = useCallback(() => {
+    localStorage.removeItem('fittrack_log_plan');
+  }, []);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedInstructions, setExpandedInstructions] = useState<Set<number>>(new Set());
@@ -1014,7 +1087,17 @@ function FromPlanTab({
               actual_weight: '',
             })
           );
-          setPlanExercises(items);
+          // Merge restored actual values from localStorage draft
+          const merged = items.map(dbItem => {
+            const saved = restoredPlanExercises.find(r => r.exercise_id === dbItem.exercise_id);
+            return saved ? {
+              ...dbItem,
+              actual_sets: saved.actual_sets || dbItem.actual_sets,
+              actual_reps: saved.actual_reps || dbItem.actual_reps,
+              actual_weight: saved.actual_weight || dbItem.actual_weight,
+            } : dbItem;
+          });
+          setPlanExercises(merged);
         }
       } catch {
         setError('Failed to load plan exercises');
@@ -1092,6 +1175,7 @@ function FromPlanTab({
         return;
       }
 
+      clearPlanDraft();
       onSaved();
     } catch {
       setError('Something went wrong. Please try again.');
@@ -1437,6 +1521,25 @@ function FromPlanTab({
           'Post Workout'
         )}
       </button>
+
+      {/* Clear Draft */}
+      {savedPlanDraft && (
+        <button
+          type="button"
+          onClick={() => {
+            clearPlanDraft();
+            setSelectedPlanId(null);
+            setPlanExercises([]);
+            setDurationHours('');
+            setDurationMinutes('');
+            setNote('');
+            setWeightUnit('lbs');
+          }}
+          className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Clear draft
+        </button>
+      )}
     </div>
   );
 }

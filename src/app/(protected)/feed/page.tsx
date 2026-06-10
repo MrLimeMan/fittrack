@@ -268,6 +268,7 @@ export default function FeedPage() {
             reactions={reactions.filter((r) => r.workout_id === workout.id)}
             onReactionChange={handleRefresh}
             onEdit={handleRefresh}
+            onDelete={handleRefresh}
           />
         ))}
       </div>

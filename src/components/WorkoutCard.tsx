@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Clock, Pencil, Check } from 'lucide-react';
+import { Clock, Pencil, Check, Trash2 } from 'lucide-react';
 
 interface WorkoutExercise {
   name: string;
@@ -47,6 +47,7 @@ interface WorkoutCardProps {
   reactions: ReactionWithProfile[];
   onReactionChange?: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 const WORKOUT_TYPE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -115,7 +116,7 @@ function MiniAvatar({ profile, size = 'w-5 h-5' }: { profile: ProfileBrief | nul
   );
 }
 
-export default function WorkoutCard({ workout, currentUser, reactions, onReactionChange, onEdit }: WorkoutCardProps) {
+export default function WorkoutCard({ workout, currentUser, reactions, onReactionChange, onEdit, onDelete }: WorkoutCardProps) {
   const [toggling, setToggling] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editNote, setEditNote] = useState(workout.note ?? '');
@@ -125,6 +126,8 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [locallyEdited, setLocallyEdited] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const profile = workout.profiles;
   const typeStyle = WORKOUT_TYPE_STYLES[workout.workout_type] || WORKOUT_TYPE_STYLES.other;
@@ -218,6 +221,20 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
         onEdit?.();
       }, 1200);
     }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    const { error } = await supabase
+      .from('workouts')
+      .delete()
+      .eq('id', workout.id);
+
+    if (!error) {
+      onDelete?.();
+    }
+    setDeleting(false);
+    setConfirmDelete(false);
   }
 
   if (isEditing) {
@@ -401,13 +418,40 @@ export default function WorkoutCard({ workout, currentUser, reactions, onReactio
               {typeStyle.label}
             </span>
             {isOwnWorkout && (
-              <button
-                onClick={startEditing}
-                className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Edit workout"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={startEditing}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Edit workout"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                {confirmDelete ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="px-2 py-0.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50"
+                    >
+                      {deleting ? '...' : 'Delete'}
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-muted transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="p-1 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                    title="Delete workout"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">

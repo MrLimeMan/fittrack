@@ -114,7 +114,7 @@ export default function PlanEditorPage() {
     // Update plan metadata
     await supabase
       .from('workout_plans')
-      .update({ name, description: description || null, updated_at: new Date().toISOString() })
+      .update({ name, description: description || null })
       .eq('id', plan.id);
 
     // Update exercise details (sets/reps/etc)

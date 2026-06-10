@@ -11,41 +11,29 @@ import ExerciseBrowser from '@/components/ExerciseBrowser';
 
 type Tab = 'library' | 'plans';
 
-const STARTER_TEMPLATES: Omit<WorkoutPlan, 'id' | 'created_at' | 'updated_at'>[] = [
+const STARTER_TEMPLATES = [
   {
     name: 'Full Body Beginner',
     description: 'A balanced full-body routine perfect for getting started. Hits all major muscle groups.',
-    difficulty: 'beginner',
-    workout_type: 'strength',
-    created_by: 'template',
-    group_id: null,
+    group_id: null as string | null,
     is_public: true,
   },
   {
     name: 'Push Pull Legs',
     description: 'Classic 3-day split focusing on push, pull, and leg movements for balanced growth.',
-    difficulty: 'intermediate',
-    workout_type: 'strength',
-    created_by: 'template',
-    group_id: null,
+    group_id: null as string | null,
     is_public: true,
   },
   {
     name: 'HIIT Cardio Blast',
     description: 'High-intensity interval training to burn calories and boost cardiovascular fitness.',
-    difficulty: 'intermediate',
-    workout_type: 'cardio',
-    created_by: 'template',
-    group_id: null,
+    group_id: null as string | null,
     is_public: true,
   },
   {
     name: 'Mobility & Recovery',
     description: 'Gentle stretching and mobility work to improve flexibility and aid recovery.',
-    difficulty: 'beginner',
-    workout_type: 'flexibility',
-    created_by: 'template',
-    group_id: null,
+    group_id: null as string | null,
     is_public: true,
   },
 ];
@@ -93,8 +81,8 @@ export default function PlannerPage() {
       const { data } = await supabase
         .from('workout_plans')
         .select('*')
-        .eq('created_by', user!.id)
-        .order('updated_at', { ascending: false });
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
       if (data) {
         setPlans(data);
         // Fetch exercise counts per plan
@@ -121,9 +109,8 @@ export default function PlannerPage() {
       .insert({
         name: 'New Workout Plan',
         description: '',
-        difficulty: 'beginner',
-        workout_type: 'strength',
-        created_by: user.id,
+        user_id: user.id,
+        is_template: false,
         is_public: false,
       })
       .select()
@@ -142,9 +129,8 @@ export default function PlannerPage() {
       .insert({
         name: template.name,
         description: template.description,
-        difficulty: template.difficulty,
-        workout_type: template.workout_type,
-        created_by: user.id,
+        user_id: user.id,
+        is_template: false,
         is_public: false,
       })
       .select()
@@ -244,11 +230,6 @@ export default function PlannerPage() {
                           </p>
                         )}
                         <div className="flex items-center gap-2 pt-1">
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium capitalize ${difficultyColor(plan.difficulty)}`}
-                          >
-                            {plan.difficulty}
-                          </span>
                           <span className="text-xs text-muted-foreground">
                             {planExerciseCounts[plan.id] ?? 0} exercises
                           </span>
@@ -288,13 +269,8 @@ export default function PlannerPage() {
                       {template.description}
                     </p>
                     <div className="flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium capitalize ${difficultyColor(template.difficulty)}`}
-                      >
-                        {template.difficulty}
-                      </span>
-                      <span className="text-xs text-muted-foreground capitalize">
-                        {template.workout_type}
+                      <span className="text-xs text-muted-foreground">
+                        Starter Template
                       </span>
                     </div>
                     <button

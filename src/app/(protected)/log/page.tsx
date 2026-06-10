@@ -356,6 +356,7 @@ function DetailedLogTab({
   const [durationHours, setDurationHours] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('');
   const [note, setNote] = useState('');
+  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
   const [exerciseList, setExerciseList] = useState<DetailedExercise[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -651,12 +652,15 @@ function DetailedLogTab({
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
-                    Weight
+                  <label
+                    className="text-[11px] font-medium text-muted-foreground mb-1 block cursor-pointer hover:text-primary transition-colors select-none"
+                    onClick={() => setWeightUnit(u => u === 'lbs' ? 'kg' : 'lbs')}
+                  >
+                    Weight ({weightUnit})
                   </label>
                   <input
                     type="text"
-                    placeholder="lbs/kg"
+                    placeholder={weightUnit}
                     value={ex.weight}
                     onChange={(e) =>
                       handleExerciseChange(index, 'weight', e.target.value)
@@ -747,6 +751,7 @@ function FromPlanTab({
   const [durationHours, setDurationHours] = useState('');
   const [durationMinutes, setDurationMinutes] = useState('');
   const [note, setNote] = useState('');
+  const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedInstructions, setExpandedInstructions] = useState<Set<number>>(new Set());
@@ -1157,12 +1162,15 @@ function FromPlanTab({
                   />
                 </div>
                 <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
-                    Weight
+                  <label
+                    className="text-[11px] font-medium text-muted-foreground mb-1 block cursor-pointer hover:text-primary transition-colors select-none"
+                    onClick={() => setWeightUnit(u => u === 'lbs' ? 'kg' : 'lbs')}
+                  >
+                    Weight ({weightUnit})
                   </label>
                   <input
                     type="text"
-                    placeholder="lbs/kg"
+                    placeholder={weightUnit}
                     value={item.actual_weight}
                     onChange={(e) =>
                       handlePlanExerciseChange(

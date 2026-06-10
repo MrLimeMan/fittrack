@@ -1120,7 +1120,7 @@ export default function LogWorkoutPage() {
         .select('*')
         .eq('user_id', user!.id)
         .eq('is_template', false)
-        .order('updated_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       // Fetch user's group membership
       const groupPromise = supabase
